@@ -20,8 +20,9 @@ void enableRawMode() {
     struct termios raw = orig_termios; /* from <termios.h> */
     /* ECHO causes all keys to be printed to the terminal
      * bitflag defined as 00000000000000000000000000001000
-     * turned off using AND(flags, NOT(ECHO)) */
-    raw.c_lflag &= ~(ECHO);
+     * turned off using AND(flags, NOT(ECHO))
+     * ICANON sets canonical mode on and off */
+    raw.c_lflag &= ~(ECHO | ICANON);
 
     /* TCSAFLUSH: when to apply flag change - waits for pending output to be
      * written to the terminal, discards any unread input */
