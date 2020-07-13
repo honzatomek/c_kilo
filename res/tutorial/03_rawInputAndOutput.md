@@ -247,6 +247,7 @@ user presses `Ctrl-Q` to quit.
 
 We could use `atexit()` to clear the screen when our program exits, but then
 the error message printed by `die()` would get erased right after printing it.
+
 ## [Tildes](#tildes)
 
 It's time to start drawing. Let's draw a column of tildes (`~`) on the left
@@ -254,17 +255,27 @@ hand side of the screen, like [vim](http://www.vim.org/) does. In our text
 editor, we'll draw a tilde at the beginning of any lines that come after the
 end of the file being edited.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/tildes/kilo.c)</div>
-  <div class="step-number">Step 25</div>
-  <div class="step-name">[tildes](https://github.com/snaptoken/kilo-src/tree/tildes)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><ins class="line"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">()</span> <span class="p">{</span></ins><ins class="line">  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span></ins><ins class="line">  <span class="k">for</span> <span class="p">(</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o"><</span> <span class="mi">24</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">    <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"~</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></ins><ins class="line">  <span class="p">}</span></ins><ins class="line"><span class="p">}</span></ins><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></div><div class="line">  <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line"></div><ins class="line">  <span class="n">editorDrawRows</span><span class="p">();</span></ins><ins class="line"></ins><ins class="line">  <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></ins><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** output ***/
+void editorDrawRows() {
+  int y;
+  for (y = 0; y < 24; y++) {
+    write(STDOUT_FILENO, "~\r\n", 3);
+  }
+}
+void editorRefreshScreen() {
+  write(STDOUT_FILENO, "\x1b[2J", 4);
+  write(STDOUT_FILENO, "\x1b[H", 3);
+  editorDrawRows();
+  write(STDOUT_FILENO, "\x1b[H", 3);
+}
+/*** input ***/
+/*** init ***/
+```
 
 `editorDrawRows()` will handle drawing each row of the buffer of text being
 edited. For now it draws a tilde in each row, which means that row is not part
@@ -275,6 +286,7 @@ draw. For now we just draw `24` rows.
 
 After we're done drawing, we do another `<esc>[H` escape sequence to reposition
 the cursor back up at the top-left corner.
+
 ## [Global state](#global-state)
 
 Our next goal is to get the size of the terminal, so we know how many rows to
@@ -282,20 +294,41 @@ draw in `editorDrawRows()`. But first, let's set up a global struct that will
 contain our editor state, which we'll use to store the width and height of the
 terminal. For now, let's just put our `orig_termios` global into the struct.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/global-state/kilo.c)</div>
-  <div class="step-number">Step 26</div>
-  <div class="step-name">[global-state](https://github.com/snaptoken/kilo-src/tree/global-state)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line"><span class="cm">/*** data ***/</span></div><div class="line"></div><ins class="line"><span class="k">struct</span> <span class="n">editorConfig</span> <span class="p">{</span></ins><ins class="line">  <span class="k">struct</span> <span class="n">termios</span> <span class="n">orig_termios</span><span class="p">;</span></ins><ins class="line"><span class="p">};</span></ins><ins class="line"></ins><ins class="line"><span class="k">struct</span> <span class="n">editorConfig</span> <span class="n">E</span><span class="p">;</span></ins><div class="line"></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span></div><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">tcsetattr</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">TCSAFLUSH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">E</span><span class="p">.</span><span class="n">orig_termios</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span></ins><div class="line">    <span class="n">die</span><span class="p">(</span><span class="s">"tcsetattr"</span><span class="p">);</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span></div><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">tcgetattr</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">E</span><span class="p">.</span><span class="n">orig_termios</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"tcgetattr"</span><span class="p">);</span></ins><div class="line">  <span class="n">atexit</span><span class="p">(</span><span class="n">disableRawMode</span><span class="p">);</span></div><div class="line"></div><ins class="line">  <span class="k">struct</span> <span class="n">termios</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">E</span><span class="p">.</span><span class="n">orig_termios</span><span class="p">;</span></ins><div class="line">  <span class="n">raw</span><span class="p">.</span><span class="n">c_iflag</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="p">(</span><span class="n">BRKINT</span> <span class="o">|</span> <span class="n">ICRNL</span> <span class="o">|</span> <span class="n">INPCK</span> <span class="o">|</span> <span class="n">ISTRIP</span> <span class="o">|</span> <span class="n">IXON</span><span class="p">);</span></div><div class="line">  <span class="n">raw</span><span class="p">.</span><span class="n">c_oflag</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="p">(</span><span class="n">OPOST</span><span class="p">);</span></div><div class="line">  <span class="n">raw</span><span class="p">.</span><span class="n">c_cflag</span> <span class="o">|=</span> <span class="p">(</span><span class="n">CS8</span><span class="p">);</span></div><div class="line">  <span class="n">raw</span><span class="p">.</span><span class="n">c_lflag</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="p">(</span><span class="n">ECHO</span> <span class="o">|</span> <span class="n">ICANON</span> <span class="o">|</span> <span class="n">IEXTEN</span> <span class="o">|</span> <span class="n">ISIG</span><span class="p">);</span></div><div class="line">  <span class="n">raw</span><span class="p">.</span><span class="n">c_cc</span><span class="p">[</span><span class="n">VMIN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span></div><div class="line">  <span class="n">raw</span><span class="p">.</span><span class="n">c_cc</span><span class="p">[</span><span class="n">VTIME</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">tcsetattr</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">TCSAFLUSH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">raw</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"tcsetattr"</span><span class="p">);</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+struct editorConfig {
+  struct termios orig_termios;
+};
+struct editorConfig E;
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() {
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
+    die("tcsetattr");
+}
+void enableRawMode() {
+  if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) die("tcgetattr");
+  atexit(disableRawMode);
+  struct termios raw = E.orig_termios;
+  raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+  raw.c_oflag &= ~(OPOST);
+  raw.c_cflag |= (CS8);
+  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+  raw.c_cc[VMIN] = 0;
+  raw.c_cc[VTIME] = 1;
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
+}
+char editorReadKey() { … }
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 Our global variable containing our editor state is named `E`. We must replace
 all occurrences of `orig_termios` with `E.orig_termios`.
+
 ## [Window size, the easy way](#window-size-the-easy-way)
 
 On most systems, you should be able to get the size of the terminal by simply
@@ -303,17 +336,36 @@ calling `ioctl()` with the `TIOCGWINSZ` request. (As far as I can tell, it
 stands for __T__erminal __IOC__tl (which itself stands for __I__nput/__O__utput
 __C__on__t__ro__l__) __G__et __WIN__dow __S__i__Z__e.)
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/ioctl/kilo.c)</div>
-  <div class="step-number">Step 27</div>
-  <div class="step-name">[ioctl](https://github.com/snaptoken/kilo-src/tree/ioctl)</div>
-</div><pre class="highlight">`<div class="line"><span class="cm">/*** includes ***/</span></div><div class="line"></div><div class="line"><span class="cp">#include <ctype.h></span></div><div class="line"><span class="cp">#include <errno.h></span></div><div class="line"><span class="cp">#include <stdio.h></span></div><div class="line"><span class="cp">#include <stdlib.h></span></div><ins class="line"><span class="cp">#include <sys/ioctl.h></span></ins><div class="line"><span class="cp">#include <termios.h></span></div><div class="line"><span class="cp">#include <unistd.h></span></div><div class="line"></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><ins class="line"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">  <span class="k">struct</span> <span class="n">winsize</span> <span class="n">ws</span><span class="p">;</span></ins><ins class="line"></ins><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">ioctl</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">TIOCGWINSZ</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ws</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">||</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></ins><ins class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></ins><ins class="line">    <span class="o">*</span><span class="n">cols</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span><span class="p">;</span></ins><ins class="line">    <span class="o">*</span><span class="n">rows</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_row</span><span class="p">;</span></ins><ins class="line">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span></ins><ins class="line">  <span class="p">}</span></ins><ins class="line"><span class="p">}</span></ins><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+#include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() { … }
+int getWindowSize(int *rows, int *cols) {
+  struct winsize ws;
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    return -1;
+  } else {
+    *cols = ws.ws_col;
+    *rows = ws.ws_row;
+    return 0;
+  }
+}
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 `ioctl()`, `TIOCGWINSZ`, and `struct winsize` come from `<sys/ioctl.h>`.
 
@@ -330,32 +382,54 @@ return value to indicate success or failure.)
 Now let's add `screenrows` and `screencols` to our global editor state, and
 call `getWindowSize()` to fill in those values.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/init-editor/kilo.c)</div>
-  <div class="step-number">Step 28</div>
-  <div class="step-name">[init-editor](https://github.com/snaptoken/kilo-src/tree/init-editor)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line"><span class="cm">/*** data ***/</span></div><div class="line"></div><div class="line"><span class="k">struct</span> <span class="n">editorConfig</span> <span class="p">{</span></div><ins class="line">  <span class="kt">int</span> <span class="n">screenrows</span><span class="p">;</span></ins><ins class="line">  <span class="kt">int</span> <span class="n">screencols</span><span class="p">;</span></ins><div class="line">  <span class="k">struct</span> <span class="n">termios</span> <span class="n">orig_termios</span><span class="p">;</span></div><div class="line"><span class="p">};</span></div><div class="line"></div><div class="line"><span class="k">struct</span> <span class="n">editorConfig</span> <span class="n">E</span><span class="p">;</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line"><span class="cm">/*** init ***/</span></div><div class="line"></div><ins class="line"><span class="kt">void</span> <span class="nf">initEditor</span><span class="p">()</span> <span class="p">{</span></ins><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">getWindowSize</span><span class="p">(</span><span class="o">&amp;</span><span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">E</span><span class="p">.</span><span class="n">screencols</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"getWindowSize"</span><span class="p">);</span></ins><ins class="line"><span class="p">}</span></ins><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="n">enableRawMode</span><span class="p">();</span></div><ins class="line">  <span class="n">initEditor</span><span class="p">();</span></ins><div class="line"></div><div class="line">  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="n">editorRefreshScreen</span><span class="p">();</span></div><div class="line">    <span class="n">editorProcessKeypress</span><span class="p">();</span></div><div class="line">  <span class="p">}</span></div><div class="line"></div><div class="line">  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span></div><div class="line"><span class="p">}</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+struct editorConfig {
+  int screenrows;
+  int screencols;
+  struct termios orig_termios;
+};
+struct editorConfig E;
+/*** terminal ***/
+/*** output ***/
+/*** input ***/
+/*** init ***/
+void initEditor() {
+  if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+}
+int main() {
+  enableRawMode();
+  initEditor();
+  while (1) {
+    editorRefreshScreen();
+    editorProcessKeypress();
+  }
+  return 0;
+}
+```
 
 `initEditor()`'s job will be to initialize all the fields in the `E` struct.
 
 Now we're ready to display the proper number of tildes on the screen:
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/screenrows/kilo.c)</div>
-  <div class="step-number">Step 29</div>
-  <div class="step-name">[screenrows](https://github.com/snaptoken/kilo-src/tree/screenrows)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span></div><ins class="line">  <span class="k">for</span> <span class="p">(</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">    <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"~</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="n">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** output ***/
+void editorDrawRows() {
+  int y;
+  for (y = 0; y < E.screenrows; y++) {
+    write(STDOUT_FILENO, "~\r\n", 3);
+  }
+}
+void editorRefreshScreen() { … }
+/*** input ***/
+/*** init ***/
+```
 
 ## [Window size, the hard way](#window-size-the-hard-way)
 
@@ -369,17 +443,31 @@ us how many rows and columns there must be on the screen.
 
 Let's start by moving the cursor to the bottom-right.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/bottom-right/kilo.c)</div>
-  <div class="step-number">Step 30</div>
-  <div class="step-name">[bottom-right](https://github.com/snaptoken/kilo-src/tree/bottom-right)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="k">struct</span> <span class="n">winsize</span> <span class="n">ws</span><span class="p">;</span></div><div class="line"></div><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="mi">1</span> <span class="o">||</span> <span class="n">ioctl</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">TIOCGWINSZ</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ws</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">||</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[999C</span><span class="se">\x1b</span><span class="s">[999B"</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">12</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></ins><ins class="line">    <span class="n">editorReadKey</span><span class="p">();</span></ins><div class="line">    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></div><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="o">*</span><span class="n">cols</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span><span class="p">;</span></div><div class="line">    <span class="o">*</span><span class="n">rows</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_row</span><span class="p">;</span></div><div class="line">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() { … }
+int getWindowSize(int *rows, int *cols) {
+  struct winsize ws;
+  if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+    editorReadKey();
+    return -1;
+  } else {
+    *cols = ws.ws_col;
+    *rows = ws.ws_row;
+    return 0;
+  }
+}
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 As you might have gathered from the code, there is no simple "move the cursor
 to the bottom-right corner" command.
@@ -416,17 +504,44 @@ argument of `6` to ask for the cursor position. Then we can read the reply from
 the standard input. Let's print out each character from the standard input to
 see what the reply looks like.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/cursor-query/kilo.c)</div>
-  <div class="step-number">Step 31</div>
-  <div class="step-name">[cursor-query](https://github.com/snaptoken/kilo-src/tree/cursor-query)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><ins class="line"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[6n"</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></ins><ins class="line"></ins><ins class="line">  <span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\r\n</span><span class="s">"</span><span class="p">);</span></ins><ins class="line">  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span></ins><ins class="line">  <span class="k">while</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">iscntrl</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="p">{</span></ins><ins class="line">      <span class="n">printf</span><span class="p">(</span><span class="s">"%d</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="n">c</span><span class="p">);</span></ins><ins class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></ins><ins class="line">      <span class="n">printf</span><span class="p">(</span><span class="s">"%d ('%c')</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">);</span></ins><ins class="line">    <span class="p">}</span></ins><ins class="line">  <span class="p">}</span></ins><ins class="line"></ins><ins class="line">  <span class="n">editorReadKey</span><span class="p">();</span></ins><ins class="line"></ins><ins class="line">  <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></ins><ins class="line"><span class="p">}</span></ins><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="k">struct</span> <span class="n">winsize</span> <span class="n">ws</span><span class="p">;</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="mi">1</span> <span class="o">||</span> <span class="n">ioctl</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">TIOCGWINSZ</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ws</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">||</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[999C</span><span class="se">\x1b</span><span class="s">[999B"</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">12</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></div><ins class="line">    <span class="k">return</span> <span class="n">getCursorPosition</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">);</span></ins><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="o">*</span><span class="n">cols</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span><span class="p">;</span></div><div class="line">    <span class="o">*</span><span class="n">rows</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_row</span><span class="p">;</span></div><div class="line">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() { … }
+int getCursorPosition(int *rows, int *cols) {
+  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+  printf("\r\n");
+  char c;
+  while (read(STDIN_FILENO, &c, 1) == 1) {
+    if (iscntrl(c)) {
+      printf("%d\r\n", c);
+    } else {
+      printf("%d ('%c')\r\n", c, c);
+    }
+  }
+  editorReadKey();
+  return -1;
+}
+int getWindowSize(int *rows, int *cols) {
+  struct winsize ws;
+  if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+    return getCursorPosition(rows, cols);
+  } else {
+    *cols = ws.ws_col;
+    *rows = ws.ws_row;
+    return 0;
+  }
+}
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 The reply is an escape sequence! It's an escape character (`27`), followed by a
 `[` character, and then the actual response: `24;80R`, or similar. (This
@@ -443,17 +558,34 @@ exit and reopen the command prompt window.)
 We're going to have to parse this response. But first, let's read it into a
 buffer. We'll keep reading characters until we get to the `R` character.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/response-buffer/kilo.c)</div>
-  <div class="step-number">Step 32</div>
-  <div class="step-name">[response-buffer](https://github.com/snaptoken/kilo-src/tree/response-buffer)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span></div><ins class="line">  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span></ins><ins class="line">  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span></ins><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[6n"</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></div><div class="line"></div><ins class="line">  <span class="k">while</span> <span class="p">(</span><span class="n">i</span> <span class="o"><</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'R'</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span></ins><ins class="line">    <span class="n">i</span><span class="o">++</span><span class="p">;</span></ins><div class="line">  <span class="p">}</span></div><ins class="line">  <span class="n">buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span></ins><ins class="line"></ins><ins class="line">  <span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\r\n</span><span class="s">&amp;buf[1]: '%s'</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span></ins><div class="line"></div><div class="line">  <span class="n">editorReadKey</span><span class="p">();</span></div><div class="line"></div><div class="line">  <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="n">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() { … }
+int getCursorPosition(int *rows, int *cols) {
+  char buf[32];
+  unsigned int i = 0;
+  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+  while (i < sizeof(buf) - 1) {
+    if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+    if (buf[i] == 'R') break;
+    i++;
+  }
+  buf[i] = '\0';
+  printf("\r\n&buf[1]: '%s'\r\n", &buf[1]);
+  editorReadKey();
+  return -1;
+}
+int getWindowSize(int *rows, int *cols) { … }
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 When we print out the buffer, we don't want to print the `'\x1b'` character,
 because the terminal would interpret it as an escape sequence and wouldn't
@@ -464,17 +596,34 @@ to assign `'\0'` to the final byte of `buf`.
 If you run the program, you'll see we have the response in `buf` in the form of
 `<esc>[24;80`. Let's parse the two numbers out of there using `sscanf()`:
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/parse-response/kilo.c)</div>
-  <div class="step-number">Step 33</div>
-  <div class="step-name">[parse-response](https://github.com/snaptoken/kilo-src/tree/parse-response)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span></div><div class="line">  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[6n"</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></div><div class="line"></div><div class="line">  <span class="k">while</span> <span class="p">(</span><span class="n">i</span> <span class="o"><</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'R'</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="n">i</span><span class="o">++</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line">  <span class="n">buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span></div><div class="line"></div><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">buf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="sc">'\x1b'</span> <span class="o">||</span> <span class="n">buf</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="sc">'['</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></ins><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">sscanf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="s">"%d;%d"</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></ins><div class="line"></div><ins class="line">  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span></ins><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() { … }
+int getCursorPosition(int *rows, int *cols) {
+  char buf[32];
+  unsigned int i = 0;
+  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+  while (i < sizeof(buf) - 1) {
+    if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+    if (buf[i] == 'R') break;
+    i++;
+  }
+  buf[i] = '\0';
+  if (buf[0] != '\x1b' || buf[1] != '[') return -1;
+  if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
+  return 0;
+}
+int getWindowSize(int *rows, int *cols) { … }
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 `sscanf()` comes from `<stdio.h>`.
 
@@ -491,16 +640,31 @@ your terminal.
 Now that we know that works, let's remove the `1 ||` we put in the `if`
 condition temporarily.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/back-to-ioctl/kilo.c)</div>
-  <div class="step-number">Step 34</div>
-  <div class="step-name">[back-to-ioctl](https://github.com/snaptoken/kilo-src/tree/back-to-ioctl)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="k">struct</span> <span class="n">winsize</span> <span class="n">ws</span><span class="p">;</span></div><div class="line"></div><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">ioctl</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">TIOCGWINSZ</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ws</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">||</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[999C</span><span class="se">\x1b</span><span class="s">[999B"</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">12</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span></div><div class="line">    <span class="k">return</span> <span class="n">getCursorPosition</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">);</span></div><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="o">*</span><span class="n">cols</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_col</span><span class="p">;</span></div><div class="line">    <span class="o">*</span><span class="n">rows</span> <span class="o">=</span> <span class="n">ws</span><span class="p">.</span><span class="n">ws_row</span><span class="p">;</span></div><div class="line">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() { … }
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) {
+  struct winsize ws;
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+    return getCursorPosition(rows, cols);
+  } else {
+    *cols = ws.ws_col;
+    *rows = ws.ws_row;
+    return 0;
+  }
+}
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 ## [The last line](#the-last-line)
 
@@ -510,16 +674,25 @@ then print a `'\r\n'` like on any other line, but this causes the terminal to
 scroll in order to make room for a new, blank line. Let's make the last line an
 exception when we print our `'\r\n'`'s.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/last-line/kilo.c)</div>
-  <div class="step-number">Step 35</div>
-  <div class="step-name">[last-line](https://github.com/snaptoken/kilo-src/tree/last-line)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span></div><div class="line">  <span class="k">for</span> <span class="p">(</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span></div><ins class="line">    <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"~"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span></ins><ins class="line"></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span></ins><ins class="line">    <span class="p">}</span></ins><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** output ***/
+void editorDrawRows() {
+  int y;
+  for (y = 0; y < E.screenrows; y++) {
+    write(STDOUT_FILENO, "~", 1);
+    if (y < E.screenrows - 1) {
+      write(STDOUT_FILENO, "\r\n", 2);
+    }
+  }
+}
+void editorRefreshScreen() { … }
+/*** input ***/
+/*** init ***/
+```
 
 ## [Append buffer](#append-buffer)
 
@@ -537,17 +710,27 @@ supports one operation: appending.
 Let's start by making a new `/*** append buffer ***/` section, and defining the
 `abuf` struct under it.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/abuf-struct/kilo.c)</div>
-  <div class="step-number">Step 36</div>
-  <div class="step-name">[abuf-struct](https://github.com/snaptoken/kilo-src/tree/abuf-struct)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><ins class="line"><span class="cm">/*** append buffer ***/</span></ins><ins class="line"></ins><ins class="line"><span class="k">struct</span> <span class="n">abuf</span> <span class="p">{</span></ins><ins class="line">  <span class="kt">char</span> <span class="o">*</span><span class="n">b</span><span class="p">;</span></ins><ins class="line">  <span class="kt">int</span> <span class="n">len</span><span class="p">;</span></ins><ins class="line"><span class="p">};</span></ins><ins class="line"></ins><ins class="line"><span class="cp">#define ABUF_INIT {NULL, 0}</span></ins><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() { … }
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) { … }
+/*** append buffer ***/
+struct abuf {
+  char *b;
+  int len;
+};
+#define ABUF_INIT {NULL, 0}
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 An append buffer consists of a pointer to our buffer in memory, and a length.
 We define an `ABUF_INIT` constant which represents an empty buffer. This acts
@@ -556,17 +739,36 @@ as a constructor for our `abuf` type.
 Next, let's define the `abAppend()` operation, as well as the `abFree()`
 destructor.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/abuf-append/kilo.c)</div>
-  <div class="step-number">Step 37</div>
-  <div class="step-name">[abuf-append](https://github.com/snaptoken/kilo-src/tree/abuf-append)</div>
-</div><pre class="highlight">`<div class="line"><span class="cm">/*** includes ***/</span></div><div class="line"></div><div class="line"><span class="cp">#include <ctype.h></span></div><div class="line"><span class="cp">#include <errno.h></span></div><div class="line"><span class="cp">#include <stdio.h></span></div><div class="line"><span class="cp">#include <stdlib.h></span></div><ins class="line"><span class="cp">#include <string.h></span></ins><div class="line"><span class="cp">#include <sys/ioctl.h></span></div><div class="line"><span class="cp">#include <termios.h></span></div><div class="line"><span class="cp">#include <unistd.h></span></div><div class="line"></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line"><span class="cm">/*** append buffer ***/</span></div><div class="line"></div><div class="line folded"><span class="k">struct</span> <span class="n">abuf</span> <span class="p">{</span>  ...  <span class="p">};</span></div><div class="line"></div><div class="line"><span class="cp">#define ABUF_INIT {NULL, 0}</span></div><div class="line"></div><ins class="line"><span class="kt">void</span> <span class="nf">abAppend</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">,</span> <span class="kt">int</span> <span class="n">len</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">  <span class="kt">char</span> <span class="o">*</span><span class="n">new</span> <span class="o">=</span> <span class="n">realloc</span><span class="p">(</span><span class="n">ab</span><span class="o">-></span><span class="n">b</span><span class="p">,</span> <span class="n">ab</span><span class="o">-></span><span class="n">len</span> <span class="o">+</span> <span class="n">len</span><span class="p">);</span></ins><ins class="line"></ins><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">new</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span></ins><ins class="line">  <span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">new</span><span class="p">[</span><span class="n">ab</span><span class="o">-></span><span class="n">len</span><span class="p">],</span> <span class="n">s</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span></ins><ins class="line">  <span class="n">ab</span><span class="o">-></span><span class="n">b</span> <span class="o">=</span> <span class="n">new</span><span class="p">;</span></ins><ins class="line">  <span class="n">ab</span><span class="o">-></span><span class="n">len</span> <span class="o">+=</span> <span class="n">len</span><span class="p">;</span></ins><ins class="line"><span class="p">}</span></ins><ins class="line"></ins><ins class="line"><span class="kt">void</span> <span class="nf">abFree</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">  <span class="n">free</span><span class="p">(</span><span class="n">ab</span><span class="o">-></span><span class="n">b</span><span class="p">);</span></ins><ins class="line"><span class="p">}</span></ins><div class="line"></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+#include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+struct abuf { … };
+#define ABUF_INIT {NULL, 0}
+void abAppend(struct abuf *ab, const char *s, int len) {
+  char *new = realloc(ab->b, ab->len + len);
+  if (new == NULL) return;
+  memcpy(&new[ab->len], s, len);
+  ab->b = new;
+  ab->len += len;
+}
+void abFree(struct abuf *ab) {
+  free(ab->b);
+}
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 `realloc()` and `free()` come from `<stdlib.h>`. `memcpy()` comes from
 `<string.h>`.
@@ -588,17 +790,34 @@ values.
 
 Okay, our `abuf` type is ready to be put to use.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/use-abuf/kilo.c)</div>
-  <div class="step-number">Step 38</div>
-  <div class="step-name">[use-abuf](https://github.com/snaptoken/kilo-src/tree/use-abuf)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><ins class="line"><span class="kt">void</span> <span class="n">editorDrawRows</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span></div><div class="line">  <span class="k">for</span> <span class="p">(</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span></div><ins class="line">    <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"~"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span></ins><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><ins class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span></ins><div class="line">    <span class="p">}</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="n">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span></div><ins class="line">  <span class="k">struct</span> <span class="n">abuf</span> <span class="n">ab</span> <span class="o">=</span> <span class="n">ABUF_INIT</span><span class="p">;</span></ins><div class="line"></div><ins class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></ins><ins class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></ins><div class="line"></div><ins class="line">  <span class="n">editorDrawRows</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></ins><ins class="line"></ins><ins class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></ins><ins class="line"></ins><ins class="line">  <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">b</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">len</span><span class="p">);</span></ins><ins class="line">  <span class="n">abFree</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></ins><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+void editorDrawRows(struct abuf *ab) {
+  int y;
+  for (y = 0; y < E.screenrows; y++) {
+    abAppend(ab, "~", 1);
+    if (y < E.screenrows - 1) {
+      abAppend(ab, "\r\n", 2);
+    }
+  }
+}
+void editorRefreshScreen() {
+  struct abuf ab = ABUF_INIT;
+  abAppend(&ab, "\x1b[2J", 4);
+  abAppend(&ab, "\x1b[H", 3);
+  editorDrawRows(&ab);
+  abAppend(&ab, "\x1b[H", 3);
+  write(STDOUT_FILENO, ab.b, ab.len);
+  abFree(&ab);
+}
+/*** input ***/
+/*** init ***/
+```
 
 In `editorRefreshScreen()`, we first initialize a new `abuf` called `ab`, by
 assigning `ABUF_INIT` to it. We then replace each occurrence of
@@ -606,6 +825,7 @@ assigning `ABUF_INIT` to it. We then replace each occurrence of
 `editorDrawRows()`, so it too can use `abAppend()`. Lastly, we `write()` the
 buffer's contents out to standard output, and free the memory used by the
 `abuf`.
+
 ## [Hide the cursor when repainting](#hide-the-cursor-when-repainting)
 
 There is another possible source of the annoying flicker effect we will take
@@ -615,17 +835,28 @@ screen. To make sure that doesn't happen, let's hide the cursor before
 refreshing the screen, and show it again immediately after the refresh
 finishes.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/hide-cursor/kilo.c)</div>
-  <div class="step-number">Step 39</div>
-  <div class="step-name">[hide-cursor](https://github.com/snaptoken/kilo-src/tree/hide-cursor)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="k">struct</span> <span class="n">abuf</span> <span class="n">ab</span> <span class="o">=</span> <span class="n">ABUF_INIT</span><span class="p">;</span></div><div class="line"></div><ins class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[?25l"</span><span class="p">,</span> <span class="mi">6</span><span class="p">);</span></ins><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line"></div><div class="line">  <span class="n">editorDrawRows</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></div><div class="line"></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><ins class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[?25h"</span><span class="p">,</span> <span class="mi">6</span><span class="p">);</span></ins><div class="line"></div><div class="line">  <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">b</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">len</span><span class="p">);</span></div><div class="line">  <span class="n">abFree</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+void editorDrawRows(struct abuf *ab) { … }
+void editorRefreshScreen() {
+  struct abuf ab = ABUF_INIT;
+  abAppend(&ab, "\x1b[?25l", 6);
+  abAppend(&ab, "\x1b[2J", 4);
+  abAppend(&ab, "\x1b[H", 3);
+  editorDrawRows(&ab);
+  abAppend(&ab, "\x1b[H", 3);
+  abAppend(&ab, "\x1b[?25h", 6);
+  write(STDOUT_FILENO, ab.b, ab.len);
+  abFree(&ab);
+}
+/*** input ***/
+/*** init ***/
+```
 
 We use escape sequences to tell the terminal to hide and show the cursor. The
 `h` and `l` commands
@@ -639,6 +870,7 @@ appears the cursor hiding/showing feature appeared in
 terminals might not support hiding/showing the cursor, but if they don't, then
 they will just ignore those escape sequences, which isn't a big deal in this
 case.
+
 ## [Clear lines one at a time](#clear-lines-one-at-a-time)
 
 Instead of clearing the entire screen before each refresh, it seems more
@@ -646,17 +878,36 @@ optimal to clear each line as we redraw them. Let's remove the `<esc>[2J`
 (clear entire screen) escape sequence, and instead put a `<esc>[K` sequence at
 the end of each line we draw.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/clear-line/kilo.c)</div>
-  <div class="step-number">Step 40</div>
-  <div class="step-name">[clear-line](https://github.com/snaptoken/kilo-src/tree/clear-line)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span></div><div class="line">  <span class="k">for</span> <span class="p">(</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"~"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span></div><div class="line"></div><ins class="line">    <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[K"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></ins><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span></div><div class="line">    <span class="p">}</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="k">struct</span> <span class="n">abuf</span> <span class="n">ab</span> <span class="o">=</span> <span class="n">ABUF_INIT</span><span class="p">;</span></div><div class="line"></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[?25l"</span><span class="p">,</span> <span class="mi">6</span><span class="p">);</span></div><del class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></del><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line"></div><div class="line">  <span class="n">editorDrawRows</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></div><div class="line"></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[?25h"</span><span class="p">,</span> <span class="mi">6</span><span class="p">);</span></div><div class="line"></div><div class="line">  <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">b</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">len</span><span class="p">);</span></div><div class="line">  <span class="n">abFree</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+void editorDrawRows(struct abuf *ab) {
+  int y;
+  for (y = 0; y < E.screenrows; y++) {
+    abAppend(ab, "~", 1);
+    abAppend(ab, "\x1b[K", 3);
+    if (y < E.screenrows - 1) {
+      abAppend(ab, "\r\n", 2);
+    }
+  }
+}
+void editorRefreshScreen() {
+  struct abuf ab = ABUF_INIT;
+  abAppend(&ab, "\x1b[?25l", 6);
+  abAppend(&ab, "\x1b[H", 3);
+  editorDrawRows(&ab);
+  abAppend(&ab, "\x1b[H", 3);
+  abAppend(&ab, "\x1b[?25h", 6);
+  write(STDOUT_FILENO, ab.b, ab.len);
+  abFree(&ab);
+}
+/*** input ***/
+/*** init ***/
+```
 
 The `K` command
 ([Erase In Line](http://vt100.net/docs/vt100-ug/chapter3.html#EL)) erases part
@@ -665,22 +916,43 @@ of the current line. Its argument is analogous to the `J` command's argument:
 cursor, and `0` erases the part of the line to the right of the cursor. `0` is
 the default argument, and that's what we want, so we leave out the argument and
 just use `<esc>[K`.
+
 ## [Welcome message](#welcome-message)
 
 Perhaps it's time to display a welcome message. Let's display the name of our
 editor and a version number a third of the way down the screen.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/welcome/kilo.c)</div>
-  <div class="step-number">Step 41</div>
-  <div class="step-name">[welcome](https://github.com/snaptoken/kilo-src/tree/welcome)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line"><span class="cm">/*** defines ***/</span></div><div class="line"></div><ins class="line"><span class="cp">#define KILO_VERSION "0.0.1"</span></ins><div class="line"></div><div class="line"><span class="cp">#define CTRL_KEY(k) ((k) &amp; 0x1f)</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span></div><div class="line">  <span class="k">for</span> <span class="p">(</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span></div><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o">==</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">      <span class="kt">char</span> <span class="n">welcome</span><span class="p">[</span><span class="mi">80</span><span class="p">];</span></ins><ins class="line">      <span class="kt">int</span> <span class="n">welcomelen</span> <span class="o">=</span> <span class="n">snprintf</span><span class="p">(</span><span class="n">welcome</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">welcome</span><span class="p">),</span></ins><ins class="line">        <span class="s">"Kilo editor -- version %s"</span><span class="p">,</span> <span class="n">KILO_VERSION</span><span class="p">);</span></ins><ins class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">welcomelen</span> <span class="o">></span> <span class="n">E</span><span class="p">.</span><span class="n">screencols</span><span class="p">)</span> <span class="n">welcomelen</span> <span class="o">=</span> <span class="n">E</span><span class="p">.</span><span class="n">screencols</span><span class="p">;</span></ins><ins class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="n">welcome</span><span class="p">,</span> <span class="n">welcomelen</span><span class="p">);</span></ins><ins class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></ins><div class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"~"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span></div><ins class="line">    <span class="p">}</span></ins><div class="line"></div><div class="line">    <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[K"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span></div><div class="line">    <span class="p">}</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+#define KILO_VERSION "0.0.1"
+#define CTRL_KEY(k) ((k) & 0x1f)
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+void editorDrawRows(struct abuf *ab) {
+  int y;
+  for (y = 0; y < E.screenrows; y++) {
+    if (y == E.screenrows / 3) {
+      char welcome[80];
+      int welcomelen = snprintf(welcome, sizeof(welcome),
+        "Kilo editor -- version %s", KILO_VERSION);
+      if (welcomelen > E.screencols) welcomelen = E.screencols;
+      abAppend(ab, welcome, welcomelen);
+    } else {
+      abAppend(ab, "~", 1);
+    }
+    abAppend(ab, "\x1b[K", 3);
+    if (y < E.screenrows - 1) {
+      abAppend(ab, "\r\n", 2);
+    }
+  }
+}
+void editorRefreshScreen() { … }
+/*** input ***/
+/*** init ***/
+```
 
 `snprintf()` comes from `<stdio.h>`.
 
@@ -690,17 +962,41 @@ case the terminal is too tiny to fit our welcome message.
 
 Now let's center it.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/center/kilo.c)</div>
-  <div class="step-number">Step 42</div>
-  <div class="step-name">[center](https://github.com/snaptoken/kilo-src/tree/center)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span></div><div class="line">  <span class="k">for</span> <span class="p">(</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span> <span class="n">y</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o">==</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="kt">char</span> <span class="n">welcome</span><span class="p">[</span><span class="mi">80</span><span class="p">];</span></div><div class="line">      <span class="kt">int</span> <span class="n">welcomelen</span> <span class="o">=</span> <span class="n">snprintf</span><span class="p">(</span><span class="n">welcome</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">welcome</span><span class="p">),</span></div><div class="line">        <span class="s">"Kilo editor -- version %s"</span><span class="p">,</span> <span class="n">KILO_VERSION</span><span class="p">);</span></div><div class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">welcomelen</span> <span class="o">></span> <span class="n">E</span><span class="p">.</span><span class="n">screencols</span><span class="p">)</span> <span class="n">welcomelen</span> <span class="o">=</span> <span class="n">E</span><span class="p">.</span><span class="n">screencols</span><span class="p">;</span></div><ins class="line">      <span class="kt">int</span> <span class="n">padding</span> <span class="o">=</span> <span class="p">(</span><span class="n">E</span><span class="p">.</span><span class="n">screencols</span> <span class="o">-</span> <span class="n">welcomelen</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span></ins><ins class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">padding</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">        <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"~"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span></ins><ins class="line">        <span class="n">padding</span><span class="o">--</span><span class="p">;</span></ins><ins class="line">      <span class="p">}</span></ins><ins class="line">      <span class="k">while</span> <span class="p">(</span><span class="n">padding</span><span class="o">--</span><span class="p">)</span> <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">" "</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span></ins><div class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="n">welcome</span><span class="p">,</span> <span class="n">welcomelen</span><span class="p">);</span></div><div class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"~"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span></div><div class="line">    <span class="p">}</span></div><div class="line"></div><div class="line">    <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[K"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o"><</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="n">abAppend</span><span class="p">(</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\r\n</span><span class="s">"</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span></div><div class="line">    <span class="p">}</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+void editorDrawRows(struct abuf *ab) {
+  int y;
+  for (y = 0; y < E.screenrows; y++) {
+    if (y == E.screenrows / 3) {
+      char welcome[80];
+      int welcomelen = snprintf(welcome, sizeof(welcome),
+        "Kilo editor -- version %s", KILO_VERSION);
+      if (welcomelen > E.screencols) welcomelen = E.screencols;
+      int padding = (E.screencols - welcomelen) / 2;
+      if (padding) {
+        abAppend(ab, "~", 1);
+        padding--;
+      }
+      while (padding--) abAppend(ab, " ", 1);
+      abAppend(ab, welcome, welcomelen);
+    } else {
+      abAppend(ab, "~", 1);
+    }
+    abAppend(ab, "\x1b[K", 3);
+    if (y < E.screenrows - 1) {
+      abAppend(ab, "\r\n", 2);
+    }
+  }
+}
+void editorRefreshScreen() { … }
+/*** input ***/
+/*** init ***/
+```
 
 To center a string, you divide the screen width by `2`, and then subtract half
 of the string's length from that. In other words:
@@ -708,23 +1004,36 @@ of the string's length from that. In other words:
 `(E.screencols - welcomelen) / 2`. That tells you how far from the left edge of
 the screen you should start printing the string. So we fill that space with
 space characters, except for the first character, which should be a tilde.
+
 ## [Move the cursor](#move-the-cursor)
 
 Let's focus on input now. We want the user to be able to move the cursor
 around. The first step is to keep track of the cursor's `x` and `y` position in
 the global editor state.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/cx-cy/kilo.c)</div>
-  <div class="step-number">Step 43</div>
-  <div class="step-name">[cx-cy](https://github.com/snaptoken/kilo-src/tree/cx-cy)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line"><span class="cm">/*** data ***/</span></div><div class="line"></div><div class="line"><span class="k">struct</span> <span class="n">editorConfig</span> <span class="p">{</span></div><ins class="line">  <span class="kt">int</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">;</span></ins><div class="line">  <span class="kt">int</span> <span class="n">screenrows</span><span class="p">;</span></div><div class="line">  <span class="kt">int</span> <span class="n">screencols</span><span class="p">;</span></div><div class="line">  <span class="k">struct</span> <span class="n">termios</span> <span class="n">orig_termios</span><span class="p">;</span></div><div class="line"><span class="p">};</span></div><div class="line"></div><div class="line"><span class="k">struct</span> <span class="n">editorConfig</span> <span class="n">E</span><span class="p">;</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line"><span class="cm">/*** init ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">initEditor</span><span class="p">()</span> <span class="p">{</span></div><ins class="line">  <span class="n">E</span><span class="p">.</span><span class="n">cx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span></ins><ins class="line">  <span class="n">E</span><span class="p">.</span><span class="n">cy</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span></ins><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">getWindowSize</span><span class="p">(</span><span class="o">&amp;</span><span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">E</span><span class="p">.</span><span class="n">screencols</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"getWindowSize"</span><span class="p">);</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+struct editorConfig {
+  int cx, cy;
+  int screenrows;
+  int screencols;
+  struct termios orig_termios;
+};
+struct editorConfig E;
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+/*** init ***/
+void initEditor() {
+  E.cx = 0;
+  E.cy = 0;
+  if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+}
+int main() { … }
+```
 
 `E.cx` is the horizontal coordinate of the cursor (the column) and `E.cy` is
 the vertical coordinate (the row). We initialize both of them to `0`, as we
@@ -735,17 +1044,29 @@ possible.)
 Now let's add code to `editorRefreshScreen()` to move the cursor to the
 position stored in `E.cx` and `E.cy`.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/set-cursor-position/kilo.c)</div>
-  <div class="step-number">Step 44</div>
-  <div class="step-name">[set-cursor-position](https://github.com/snaptoken/kilo-src/tree/set-cursor-position)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line"><span class="cm">/*** output ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorDrawRows</span><span class="p">(</span><span class="k">struct</span> <span class="n">abuf</span> <span class="o">*</span><span class="n">ab</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorRefreshScreen</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="k">struct</span> <span class="n">abuf</span> <span class="n">ab</span> <span class="o">=</span> <span class="n">ABUF_INIT</span><span class="p">;</span></div><div class="line"></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[?25l"</span><span class="p">,</span> <span class="mi">6</span><span class="p">);</span></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line"></div><div class="line">  <span class="n">editorDrawRows</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></div><div class="line"></div><ins class="line">  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span></ins><ins class="line">  <span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[%d;%dH"</span><span class="p">,</span> <span class="n">E</span><span class="p">.</span><span class="n">cy</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">E</span><span class="p">.</span><span class="n">cx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span></ins><ins class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">buf</span><span class="p">));</span></ins><div class="line"></div><div class="line">  <span class="n">abAppend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[?25h"</span><span class="p">,</span> <span class="mi">6</span><span class="p">);</span></div><div class="line"></div><div class="line">  <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">b</span><span class="p">,</span> <span class="n">ab</span><span class="p">.</span><span class="n">len</span><span class="p">);</span></div><div class="line">  <span class="n">abFree</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ab</span><span class="p">);</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+void editorDrawRows(struct abuf *ab) { … }
+void editorRefreshScreen() {
+  struct abuf ab = ABUF_INIT;
+  abAppend(&ab, "\x1b[?25l", 6);
+  abAppend(&ab, "\x1b[H", 3);
+  editorDrawRows(&ab);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+  abAppend(&ab, buf, strlen(buf));
+  abAppend(&ab, "\x1b[?25h", 6);
+  write(STDOUT_FILENO, ab.b, ab.len);
+  abFree(&ab);
+}
+/*** input ***/
+/*** init ***/
+```
 
 `strlen()` comes from `<string.h>`.
 
@@ -765,19 +1086,51 @@ Next, we'll allow the user to move the cursor using the
 with using these keys as arrow keys: `w` is your up arrow,
 `s` is your down arrow, `a` is left, `d` is right.)
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/move-cursor/kilo.c)</div>
-  <div class="step-number">Step 45</div>
-  <div class="step-name">[move-cursor](https://github.com/snaptoken/kilo-src/tree/move-cursor)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line"><span class="cm">/*** input ***/</span></div><div class="line"></div><ins class="line"><span class="kt">void</span> <span class="nf">editorMoveCursor</span><span class="p">(</span><span class="kt">char</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">    <span class="k">case</span> <span class="sc">'a'</span><span class="p">:</span></ins><ins class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">--</span><span class="p">;</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><ins class="line">    <span class="k">case</span> <span class="sc">'d'</span><span class="p">:</span></ins><ins class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">++</span><span class="p">;</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><ins class="line">    <span class="k">case</span> <span class="sc">'w'</span><span class="p">:</span></ins><ins class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">--</span><span class="p">;</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><ins class="line">    <span class="k">case</span> <span class="sc">'s'</span><span class="p">:</span></ins><ins class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">++</span><span class="p">;</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><ins class="line">  <span class="p">}</span></ins><ins class="line"><span class="p">}</span></ins><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorProcessKeypress</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span> <span class="o">=</span> <span class="n">editorReadKey</span><span class="p">();</span></div><div class="line"></div><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">case</span> <span class="n">CTRL_KEY</span><span class="p">(</span><span class="sc">'q'</span><span class="p">):</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">      <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line"></div><ins class="line">    <span class="k">case</span> <span class="sc">'w'</span><span class="p">:</span></ins><ins class="line">    <span class="k">case</span> <span class="sc">'s'</span><span class="p">:</span></ins><ins class="line">    <span class="k">case</span> <span class="sc">'a'</span><span class="p">:</span></ins><ins class="line">    <span class="k">case</span> <span class="sc">'d'</span><span class="p">:</span></ins><ins class="line">      <span class="n">editorMoveCursor</span><span class="p">(</span><span class="n">c</span><span class="p">);</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+void editorMoveCursor(char key) {
+  switch (key) {
+    case 'a':
+      E.cx--;
+      break;
+    case 'd':
+      E.cx++;
+      break;
+    case 'w':
+      E.cy--;
+      break;
+    case 's':
+      E.cy++;
+      break;
+  }
+}
+void editorProcessKeypress() {
+  char c = editorReadKey();
+  switch (c) {
+    case CTRL_KEY('q'):
+      write(STDOUT_FILENO, "\x1b[2J", 4);
+      write(STDOUT_FILENO, "\x1b[H", 3);
+      exit(0);
+      break;
+    case 'w':
+    case 's':
+    case 'a':
+    case 'd':
+      editorMoveCursor(c);
+      break;
+  }
+}
+/*** init ***/
+```
 
 Now you should be able to move the cursor around with those keys.
+
 ## [Arrow keys](#arrow-keys)
 
 Now that we have a way of mapping keypresses to move the cursor, let's replace
@@ -789,17 +1142,44 @@ the form of an escape sequence that starts with `'\x1b'`, `'['`, followed by an
 pressed. Let's modify `editorReadKey()` to read escape sequences of this form
 as a single keypress.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/detect-arrow-keys/kilo.c)</div>
-  <div class="step-number">Step 46</div>
-  <div class="step-name">[detect-arrow-keys](https://github.com/snaptoken/kilo-src/tree/detect-arrow-keys)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">nread</span><span class="p">;</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="k">while</span> <span class="p">((</span><span class="n">nread</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">errno</span> <span class="o">!=</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"read"</span><span class="p">);</span></div><div class="line">  <span class="p">}</span></div><div class="line"></div><ins class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'\x1b'</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">    <span class="kt">char</span> <span class="n">seq</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span></ins><ins class="line"></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></ins><ins class="line"></ins><ins class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'['</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">      <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'A'</span><span class="p">:</span> <span class="k">return</span> <span class="sc">'w'</span><span class="p">;</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'B'</span><span class="p">:</span> <span class="k">return</span> <span class="sc">'s'</span><span class="p">;</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'C'</span><span class="p">:</span> <span class="k">return</span> <span class="sc">'d'</span><span class="p">;</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'D'</span><span class="p">:</span> <span class="k">return</span> <span class="sc">'a'</span><span class="p">;</span></ins><ins class="line">      <span class="p">}</span></ins><ins class="line">    <span class="p">}</span></ins><ins class="line"></ins><ins class="line">    <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></ins><ins class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></ins><div class="line">    <span class="k">return</span> <span class="n">c</span><span class="p">;</span></div><ins class="line">  <span class="p">}</span></ins><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() {
+  int nread;
+  char c;
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+    if (nread == -1 && errno != EAGAIN) die("read");
+  }
+  if (c == '\x1b') {
+    char seq[3];
+    if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+    if (seq[0] == '[') {
+      switch (seq[1]) {
+        case 'A': return 'w';
+        case 'B': return 's';
+        case 'C': return 'd';
+        case 'D': return 'a';
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
+}
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) { … }
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 If we read an escape character, we immediately read two more bytes into the
 `seq` buffer. If either of these reads time out (after 0.1 seconds), then we
@@ -824,17 +1204,84 @@ Let's start by replacing each instance of the
 `w``a``s``d` characters with the constants
 `ARROW_UP`, `ARROW_LEFT`, `ARROW_DOWN`, and `ARROW_RIGHT`.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/arrow-keys-enum/kilo.c)</div>
-  <div class="step-number">Step 47</div>
-  <div class="step-name">[arrow-keys-enum](https://github.com/snaptoken/kilo-src/tree/arrow-keys-enum)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line"><span class="cm">/*** defines ***/</span></div><div class="line"></div><div class="line"><span class="cp">#define KILO_VERSION "0.0.1"</span></div><div class="line"></div><div class="line"><span class="cp">#define CTRL_KEY(k) ((k) &amp; 0x1f)</span></div><div class="line"></div><ins class="line"><span class="k">enum</span> <span class="n">editorKey</span> <span class="p">{</span></ins><ins class="line">  <span class="n">ARROW_LEFT</span> <span class="o">=</span> <span class="sc">'a'</span><span class="p">,</span></ins><ins class="line">  <span class="n">ARROW_RIGHT</span> <span class="o">=</span> <span class="sc">'d'</span><span class="p">,</span></ins><ins class="line">  <span class="n">ARROW_UP</span> <span class="o">=</span> <span class="sc">'w'</span><span class="p">,</span></ins><ins class="line">  <span class="n">ARROW_DOWN</span> <span class="o">=</span> <span class="sc">'s'</span></ins><ins class="line"><span class="p">};</span></ins><div class="line"></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">char</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">nread</span><span class="p">;</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="k">while</span> <span class="p">((</span><span class="n">nread</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">errno</span> <span class="o">!=</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"read"</span><span class="p">);</span></div><div class="line">  <span class="p">}</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'\x1b'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="kt">char</span> <span class="n">seq</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'['</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><ins class="line">        <span class="k">case</span> <span class="sc">'A'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_UP</span><span class="p">;</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'B'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_DOWN</span><span class="p">;</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'C'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_RIGHT</span><span class="p">;</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'D'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_LEFT</span><span class="p">;</span></ins><div class="line">      <span class="p">}</span></div><div class="line">    <span class="p">}</span></div><div class="line"></div><div class="line">    <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="k">return</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line"><span class="cm">/*** input ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorMoveCursor</span><span class="p">(</span><span class="kt">char</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="p">{</span></div><ins class="line">    <span class="k">case</span> <span class="n">ARROW_LEFT</span><span class="p">:</span></ins><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">--</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><ins class="line">    <span class="k">case</span> <span class="n">ARROW_RIGHT</span><span class="p">:</span></ins><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">++</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><ins class="line">    <span class="k">case</span> <span class="n">ARROW_UP</span><span class="p">:</span></ins><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">--</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><ins class="line">    <span class="k">case</span> <span class="n">ARROW_DOWN</span><span class="p">:</span></ins><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">++</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorProcessKeypress</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span> <span class="o">=</span> <span class="n">editorReadKey</span><span class="p">();</span></div><div class="line"></div><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">case</span> <span class="n">CTRL_KEY</span><span class="p">(</span><span class="sc">'q'</span><span class="p">):</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">      <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line"></div><ins class="line">    <span class="k">case</span> <span class="n">ARROW_UP</span><span class="p">:</span></ins><ins class="line">    <span class="k">case</span> <span class="n">ARROW_DOWN</span><span class="p">:</span></ins><ins class="line">    <span class="k">case</span> <span class="n">ARROW_LEFT</span><span class="p">:</span></ins><ins class="line">    <span class="k">case</span> <span class="n">ARROW_RIGHT</span><span class="p">:</span></ins><div class="line">      <span class="n">editorMoveCursor</span><span class="p">(</span><span class="n">c</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+#define KILO_VERSION "0.0.1"
+#define CTRL_KEY(k) ((k) & 0x1f)
+enum editorKey {
+  ARROW_LEFT = 'a',
+  ARROW_RIGHT = 'd',
+  ARROW_UP = 'w',
+  ARROW_DOWN = 's'
+};
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+char editorReadKey() {
+  int nread;
+  char c;
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+    if (nread == -1 && errno != EAGAIN) die("read");
+  }
+  if (c == '\x1b') {
+    char seq[3];
+    if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+    if (seq[0] == '[') {
+      switch (seq[1]) {
+        case 'A': return ARROW_UP;
+        case 'B': return ARROW_DOWN;
+        case 'C': return ARROW_RIGHT;
+        case 'D': return ARROW_LEFT;
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
+}
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) { … }
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+void editorMoveCursor(char key) {
+  switch (key) {
+    case ARROW_LEFT:
+      E.cx--;
+      break;
+    case ARROW_RIGHT:
+      E.cx++;
+      break;
+    case ARROW_UP:
+      E.cy--;
+      break;
+    case ARROW_DOWN:
+      E.cy++;
+      break;
+  }
+}
+void editorProcessKeypress() {
+  char c = editorReadKey();
+  switch (c) {
+    case CTRL_KEY('q'):
+      write(STDOUT_FILENO, "\x1b[2J", 4);
+      write(STDOUT_FILENO, "\x1b[H", 3);
+      exit(0);
+      break;
+    case ARROW_UP:
+    case ARROW_DOWN:
+    case ARROW_LEFT:
+    case ARROW_RIGHT:
+      editorMoveCursor(c);
+      break;
+  }
+}
+/*** init ***/
+```
 
 Now we just have to choose a representation for arrow keys that doesn't
 conflict with `w``a``s``d`, in the
@@ -843,17 +1290,84 @@ range of a `char`, so that they don't conflict with any ordinary keypresses. We
 will also have to change all variables that store keypresses to be of type
 `int` instead of `char`.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/arrow-keys-int/kilo.c)</div>
-  <div class="step-number">Step 48</div>
-  <div class="step-name">[arrow-keys-int](https://github.com/snaptoken/kilo-src/tree/arrow-keys-int)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line"><span class="cm">/*** defines ***/</span></div><div class="line"></div><div class="line"><span class="cp">#define KILO_VERSION "0.0.1"</span></div><div class="line"></div><div class="line"><span class="cp">#define CTRL_KEY(k) ((k) &amp; 0x1f)</span></div><div class="line"></div><div class="line"><span class="k">enum</span> <span class="n">editorKey</span> <span class="p">{</span></div><ins class="line">  <span class="n">ARROW_LEFT</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span></ins><ins class="line">  <span class="n">ARROW_RIGHT</span><span class="p">,</span></ins><ins class="line">  <span class="n">ARROW_UP</span><span class="p">,</span></ins><ins class="line">  <span class="n">ARROW_DOWN</span></ins><div class="line"><span class="p">};</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><ins class="line"><span class="kt">int</span> <span class="n">editorReadKey</span><span class="p">()</span> <span class="p">{</span></ins><div class="line">  <span class="kt">int</span> <span class="n">nread</span><span class="p">;</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="k">while</span> <span class="p">((</span><span class="n">nread</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">errno</span> <span class="o">!=</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"read"</span><span class="p">);</span></div><div class="line">  <span class="p">}</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'\x1b'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="kt">char</span> <span class="n">seq</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'['</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><div class="line">        <span class="k">case</span> <span class="sc">'A'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_UP</span><span class="p">;</span></div><div class="line">        <span class="k">case</span> <span class="sc">'B'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_DOWN</span><span class="p">;</span></div><div class="line">        <span class="k">case</span> <span class="sc">'C'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_RIGHT</span><span class="p">;</span></div><div class="line">        <span class="k">case</span> <span class="sc">'D'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_LEFT</span><span class="p">;</span></div><div class="line">      <span class="p">}</span></div><div class="line">    <span class="p">}</span></div><div class="line"></div><div class="line">    <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="k">return</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="n">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="n">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line"><span class="cm">/*** input ***/</span></div><div class="line"></div><ins class="line"><span class="kt">void</span> <span class="n">editorMoveCursor</span><span class="p">(</span><span class="kt">int</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_LEFT</span><span class="p">:</span></div><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">--</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_RIGHT</span><span class="p">:</span></div><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">++</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_UP</span><span class="p">:</span></div><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">--</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_DOWN</span><span class="p">:</span></div><div class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">++</span><span class="p">;</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="n">editorProcessKeypress</span><span class="p">()</span> <span class="p">{</span></div><ins class="line">  <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">editorReadKey</span><span class="p">();</span></ins><div class="line"></div><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">case</span> <span class="n">CTRL_KEY</span><span class="p">(</span><span class="sc">'q'</span><span class="p">):</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">      <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line"></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_UP</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_DOWN</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_LEFT</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_RIGHT</span><span class="p">:</span></div><div class="line">      <span class="n">editorMoveCursor</span><span class="p">(</span><span class="n">c</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+#define KILO_VERSION "0.0.1"
+#define CTRL_KEY(k) ((k) & 0x1f)
+enum editorKey {
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT,
+  ARROW_UP,
+  ARROW_DOWN
+};
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+int editorReadKey() {
+  int nread;
+  char c;
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+    if (nread == -1 && errno != EAGAIN) die("read");
+  }
+  if (c == '\x1b') {
+    char seq[3];
+    if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+    if (seq[0] == '[') {
+      switch (seq[1]) {
+        case 'A': return ARROW_UP;
+        case 'B': return ARROW_DOWN;
+        case 'C': return ARROW_RIGHT;
+        case 'D': return ARROW_LEFT;
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
+}
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) { … }
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+void editorMoveCursor(int key) {
+  switch (key) {
+    case ARROW_LEFT:
+      E.cx--;
+      break;
+    case ARROW_RIGHT:
+      E.cx++;
+      break;
+    case ARROW_UP:
+      E.cy--;
+      break;
+    case ARROW_DOWN:
+      E.cy++;
+      break;
+  }
+}
+void editorProcessKeypress() {
+  int c = editorReadKey();
+  switch (c) {
+    case CTRL_KEY('q'):
+      write(STDOUT_FILENO, "\x1b[2J", 4);
+      write(STDOUT_FILENO, "\x1b[H", 3);
+      exit(0);
+      break;
+    case ARROW_UP:
+    case ARROW_DOWN:
+    case ARROW_LEFT:
+    case ARROW_RIGHT:
+      editorMoveCursor(c);
+      break;
+  }
+}
+/*** init ***/
+```
 
 By setting the first constant in the enum to `1000`, the rest of the constants
 get incrementing values of `1001`, `1002`, `1003`, and so on.
@@ -869,41 +1383,114 @@ that pressing `Ctrl-[` is the same as pressing the `Escape`
 key, for the same reason that `Ctrl-M` is the same as pressing
 `Enter`: `Ctrl` clears the 6th and 7th bits of the character
 you type in combination with it.)
+
 ## [Prevent moving the cursor off screen](#prevent-moving-the-cursor-off-screen)
 
 Currently, you can cause the `E.cx` and `E.cy` values to go into the negatives,
 or go past the right and bottom edges of the screen. Let's prevent that by
 doing some bounds checking in `editorMoveCursor()`.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/off-screen/kilo.c)</div>
-  <div class="step-number">Step 49</div>
-  <div class="step-name">[off-screen](https://github.com/snaptoken/kilo-src/tree/off-screen)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line"><span class="cm">/*** input ***/</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorMoveCursor</span><span class="p">(</span><span class="kt">int</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span></div><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_LEFT</span><span class="p">:</span></div><ins class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">E</span><span class="p">.</span><span class="n">cx</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">        <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">--</span><span class="p">;</span></div><ins class="line">      <span class="p">}</span></ins><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_RIGHT</span><span class="p">:</span></div><ins class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">E</span><span class="p">.</span><span class="n">cx</span> <span class="o">!=</span> <span class="n">E</span><span class="p">.</span><span class="n">screencols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">        <span class="n">E</span><span class="p">.</span><span class="n">cx</span><span class="o">++</span><span class="p">;</span></div><ins class="line">      <span class="p">}</span></ins><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_UP</span><span class="p">:</span></div><ins class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">E</span><span class="p">.</span><span class="n">cy</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">        <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">--</span><span class="p">;</span></div><ins class="line">      <span class="p">}</span></ins><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_DOWN</span><span class="p">:</span></div><ins class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">E</span><span class="p">.</span><span class="n">cy</span> <span class="o">!=</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></ins><div class="line">        <span class="n">E</span><span class="p">.</span><span class="n">cy</span><span class="o">++</span><span class="p">;</span></div><ins class="line">      <span class="p">}</span></ins><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorProcessKeypress</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+void editorMoveCursor(int key) {
+  switch (key) {
+    case ARROW_LEFT:
+      if (E.cx != 0) {
+        E.cx--;
+      }
+      break;
+    case ARROW_RIGHT:
+      if (E.cx != E.screencols - 1) {
+        E.cx++;
+      }
+      break;
+    case ARROW_UP:
+      if (E.cy != 0) {
+        E.cy--;
+      }
+      break;
+    case ARROW_DOWN:
+      if (E.cy != E.screenrows - 1) {
+        E.cy++;
+      }
+      break;
+  }
+}
+void editorProcessKeypress() { … }
+/*** init ***/
+```
 
-##  keys](#the-page-up-and-page-down-keys)
+##  [the page up and page down keys](#the page up and page down keys)
 
 To complete our low-level terminal code, we need to detect a few more special
 keypresses that use escape sequences, like the arrow keys did. We'll start with
 the `Page Up` and `Page Down` keys. `Page Up` is
 sent as `<esc>[5~` and `Page Down` is sent as `<esc>[6~`.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/detect-page-up-down/kilo.c)</div>
-  <div class="step-number">Step 50</div>
-  <div class="step-name">[detect-page-up-down](https://github.com/snaptoken/kilo-src/tree/detect-page-up-down)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line"><span class="cm">/*** defines ***/</span></div><div class="line"></div><div class="line"><span class="cp">#define KILO_VERSION "0.0.1"</span></div><div class="line"></div><div class="line"><span class="cp">#define CTRL_KEY(k) ((k) &amp; 0x1f)</span></div><div class="line"></div><div class="line"><span class="k">enum</span> <span class="n">editorKey</span> <span class="p">{</span></div><div class="line">  <span class="n">ARROW_LEFT</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_RIGHT</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_UP</span><span class="p">,</span></div><ins class="line">  <span class="n">ARROW_DOWN</span><span class="p">,</span></ins><ins class="line">  <span class="n">PAGE_UP</span><span class="p">,</span></ins><ins class="line">  <span class="n">PAGE_DOWN</span></ins><div class="line"><span class="p">};</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">nread</span><span class="p">;</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="k">while</span> <span class="p">((</span><span class="n">nread</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">errno</span> <span class="o">!=</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"read"</span><span class="p">);</span></div><div class="line">  <span class="p">}</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'\x1b'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="kt">char</span> <span class="n">seq</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'['</span><span class="p">)</span> <span class="p">{</span></div><ins class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">>=</span> <span class="sc">'0'</span> <span class="o">&amp;&amp;</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o"><=</span> <span class="sc">'9'</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></ins><ins class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'~'</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">          <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></ins><ins class="line">            <span class="k">case</span> <span class="sc">'5'</span><span class="p">:</span> <span class="k">return</span> <span class="n">PAGE_UP</span><span class="p">;</span></ins><ins class="line">            <span class="k">case</span> <span class="sc">'6'</span><span class="p">:</span> <span class="k">return</span> <span class="n">PAGE_DOWN</span><span class="p">;</span></ins><ins class="line">          <span class="p">}</span></ins><ins class="line">        <span class="p">}</span></ins><ins class="line">      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></ins><div class="line">        <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><div class="line">          <span class="k">case</span> <span class="sc">'A'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_UP</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'B'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_DOWN</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'C'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_RIGHT</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'D'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_LEFT</span><span class="p">;</span></div><div class="line">        <span class="p">}</span></div><div class="line">      <span class="p">}</span></div><ins class="line">    <span class="p">}</span></ins><div class="line"></div><div class="line">    <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="k">return</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+#define KILO_VERSION "0.0.1"
+#define CTRL_KEY(k) ((k) & 0x1f)
+enum editorKey {
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT,
+  ARROW_UP,
+  ARROW_DOWN,
+  PAGE_UP,
+  PAGE_DOWN
+};
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+int editorReadKey() {
+  int nread;
+  char c;
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+    if (nread == -1 && errno != EAGAIN) die("read");
+  }
+  if (c == '\x1b') {
+    char seq[3];
+    if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+    if (seq[0] == '[') {
+      if (seq[1] >= '0' && seq[1] <= '9') {
+        if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+        if (seq[2] == '~') {
+          switch (seq[1]) {
+            case '5': return PAGE_UP;
+            case '6': return PAGE_DOWN;
+          }
+        }
+      } else {
+        switch (seq[1]) {
+          case 'A': return ARROW_UP;
+          case 'B': return ARROW_DOWN;
+          case 'C': return ARROW_RIGHT;
+          case 'D': return ARROW_LEFT;
+        }
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
+}
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) { … }
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 Now you see why we declared `seq` to be able to store 3 bytes. If the byte
 after `[` is a digit, we read another byte expecting it to be a `~`. Then we
@@ -913,17 +1500,41 @@ Let's make `Page Up` and `Page Down` do something. For now,
 we'll have them move the cursor to the top of the screen or the bottom of the
 screen.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/page-up-down-simple/kilo.c)</div>
-  <div class="step-number">Step 51</div>
-  <div class="step-name">[page-up-down-simple](https://github.com/snaptoken/kilo-src/tree/page-up-down-simple)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line"><span class="cm">/*** input ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorMoveCursor</span><span class="p">(</span><span class="kt">int</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorProcessKeypress</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">editorReadKey</span><span class="p">();</span></div><div class="line"></div><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">case</span> <span class="n">CTRL_KEY</span><span class="p">(</span><span class="sc">'q'</span><span class="p">):</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">      <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line"></div><ins class="line">    <span class="k">case</span> <span class="n">PAGE_UP</span><span class="p">:</span></ins><ins class="line">    <span class="k">case</span> <span class="n">PAGE_DOWN</span><span class="p">:</span></ins><ins class="line">      <span class="p">{</span></ins><ins class="line">        <span class="kt">int</span> <span class="n">times</span> <span class="o">=</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span></ins><ins class="line">        <span class="k">while</span> <span class="p">(</span><span class="n">times</span><span class="o">--</span><span class="p">)</span></ins><ins class="line">          <span class="n">editorMoveCursor</span><span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="n">PAGE_UP</span> <span class="o">?</span> <span class="n">ARROW_UP</span> <span class="o">:</span> <span class="n">ARROW_DOWN</span><span class="p">);</span></ins><ins class="line">      <span class="p">}</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><div class="line"></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_UP</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_DOWN</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_LEFT</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_RIGHT</span><span class="p">:</span></div><div class="line">      <span class="n">editorMoveCursor</span><span class="p">(</span><span class="n">c</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+void editorMoveCursor(int key) { … }
+void editorProcessKeypress() {
+  int c = editorReadKey();
+  switch (c) {
+    case CTRL_KEY('q'):
+      write(STDOUT_FILENO, "\x1b[2J", 4);
+      write(STDOUT_FILENO, "\x1b[H", 3);
+      exit(0);
+      break;
+    case PAGE_UP:
+    case PAGE_DOWN:
+      {
+        int times = E.screenrows;
+        while (times--)
+          editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+      }
+      break;
+    case ARROW_UP:
+    case ARROW_DOWN:
+    case ARROW_LEFT:
+    case ARROW_RIGHT:
+      editorMoveCursor(c);
+      break;
+  }
+}
+/*** init ***/
+```
 
 We create a code block with that pair of braces so that we're allowed to
 declare the `times` variable. (You can't declare variables directly inside a
@@ -935,7 +1546,8 @@ it a lot easier for us later, when we implement scrolling.
 If you're on a laptop with an `Fn` key, you may be able to press
 `Fn`+`&uarr;` and `Fn`+`&darr;` to simulate
 pressing the `Page Up` and `Page Down` keys.
-##  keys](#the-home-and-end-keys)
+
+##  [the home and end keys](#the home and end keys)
 
 Now let's implement the `Home` and `End` keys. Like the
 previous keys, these keys also send escape sequences. Unlike the previous keys,
@@ -945,71 +1557,214 @@ be sent as `<esc>[1~`, `<esc>[7~`, `<esc>[H`, or `<esc>OH`. Similarly, the
 `End` key could be sent as `<esc>[4~`, `<esc>[8~`, `<esc>[F`, or
 `<esc>OF`. Let's handle all of these cases.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/detect-home-end/kilo.c)</div>
-  <div class="step-number">Step 52</div>
-  <div class="step-name">[detect-home-end](https://github.com/snaptoken/kilo-src/tree/detect-home-end)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line"><span class="cm">/*** defines ***/</span></div><div class="line"></div><div class="line"><span class="cp">#define KILO_VERSION "0.0.1"</span></div><div class="line"></div><div class="line"><span class="cp">#define CTRL_KEY(k) ((k) &amp; 0x1f)</span></div><div class="line"></div><div class="line"><span class="k">enum</span> <span class="n">editorKey</span> <span class="p">{</span></div><div class="line">  <span class="n">ARROW_LEFT</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_RIGHT</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_UP</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_DOWN</span><span class="p">,</span></div><ins class="line">  <span class="n">HOME_KEY</span><span class="p">,</span></ins><ins class="line">  <span class="n">END_KEY</span><span class="p">,</span></ins><div class="line">  <span class="n">PAGE_UP</span><span class="p">,</span></div><div class="line">  <span class="n">PAGE_DOWN</span></div><div class="line"><span class="p">};</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">nread</span><span class="p">;</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="k">while</span> <span class="p">((</span><span class="n">nread</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">errno</span> <span class="o">!=</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"read"</span><span class="p">);</span></div><div class="line">  <span class="p">}</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'\x1b'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="kt">char</span> <span class="n">seq</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'['</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">>=</span> <span class="sc">'0'</span> <span class="o">&amp;&amp;</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o"><=</span> <span class="sc">'9'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'~'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">          <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><ins class="line">            <span class="k">case</span> <span class="sc">'1'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></ins><ins class="line">            <span class="k">case</span> <span class="sc">'4'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></ins><div class="line">            <span class="k">case</span> <span class="sc">'5'</span><span class="p">:</span> <span class="k">return</span> <span class="n">PAGE_UP</span><span class="p">;</span></div><div class="line">            <span class="k">case</span> <span class="sc">'6'</span><span class="p">:</span> <span class="k">return</span> <span class="n">PAGE_DOWN</span><span class="p">;</span></div><ins class="line">            <span class="k">case</span> <span class="sc">'7'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></ins><ins class="line">            <span class="k">case</span> <span class="sc">'8'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></ins><div class="line">          <span class="p">}</span></div><div class="line">        <span class="p">}</span></div><div class="line">      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">        <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><div class="line">          <span class="k">case</span> <span class="sc">'A'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_UP</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'B'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_DOWN</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'C'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_RIGHT</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'D'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_LEFT</span><span class="p">;</span></div><ins class="line">          <span class="k">case</span> <span class="sc">'H'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></ins><ins class="line">          <span class="k">case</span> <span class="sc">'F'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></ins><div class="line">        <span class="p">}</span></div><div class="line">      <span class="p">}</span></div><ins class="line">    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'O'</span><span class="p">)</span> <span class="p">{</span></ins><ins class="line">      <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'H'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></ins><ins class="line">        <span class="k">case</span> <span class="sc">'F'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></ins><ins class="line">      <span class="p">}</span></ins><div class="line">    <span class="p">}</span></div><div class="line"></div><div class="line">    <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="k">return</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+#define KILO_VERSION "0.0.1"
+#define CTRL_KEY(k) ((k) & 0x1f)
+enum editorKey {
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT,
+  ARROW_UP,
+  ARROW_DOWN,
+  HOME_KEY,
+  END_KEY,
+  PAGE_UP,
+  PAGE_DOWN
+};
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+int editorReadKey() {
+  int nread;
+  char c;
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+    if (nread == -1 && errno != EAGAIN) die("read");
+  }
+  if (c == '\x1b') {
+    char seq[3];
+    if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+    if (seq[0] == '[') {
+      if (seq[1] >= '0' && seq[1] <= '9') {
+        if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+        if (seq[2] == '~') {
+          switch (seq[1]) {
+            case '1': return HOME_KEY;
+            case '4': return END_KEY;
+            case '5': return PAGE_UP;
+            case '6': return PAGE_DOWN;
+            case '7': return HOME_KEY;
+            case '8': return END_KEY;
+          }
+        }
+      } else {
+        switch (seq[1]) {
+          case 'A': return ARROW_UP;
+          case 'B': return ARROW_DOWN;
+          case 'C': return ARROW_RIGHT;
+          case 'D': return ARROW_LEFT;
+          case 'H': return HOME_KEY;
+          case 'F': return END_KEY;
+        }
+      }
+    } else if (seq[0] == 'O') {
+      switch (seq[1]) {
+        case 'H': return HOME_KEY;
+        case 'F': return END_KEY;
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
+}
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) { … }
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 Now let's make `Home` and `End` do something. For now, we'll
 have them move the cursor to the left or right edges of the screen.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/home-end-simple/kilo.c)</div>
-  <div class="step-number">Step 53</div>
-  <div class="step-name">[home-end-simple](https://github.com/snaptoken/kilo-src/tree/home-end-simple)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line folded"><span class="cm">/*** defines ***/</span></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line folded"><span class="cm">/*** terminal ***/</span></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line"><span class="cm">/*** input ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">editorMoveCursor</span><span class="p">(</span><span class="kt">int</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">void</span> <span class="nf">editorProcessKeypress</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">editorReadKey</span><span class="p">();</span></div><div class="line"></div><div class="line">  <span class="k">switch</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">case</span> <span class="n">CTRL_KEY</span><span class="p">(</span><span class="sc">'q'</span><span class="p">):</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[2J"</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span></div><div class="line">      <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="s">"</span><span class="se">\x1b</span><span class="s">[H"</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span></div><div class="line">      <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line"></div><ins class="line">    <span class="k">case</span> <span class="n">HOME_KEY</span><span class="p">:</span></ins><ins class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><ins class="line"></ins><ins class="line">    <span class="k">case</span> <span class="n">END_KEY</span><span class="p">:</span></ins><ins class="line">      <span class="n">E</span><span class="p">.</span><span class="n">cx</span> <span class="o">=</span> <span class="n">E</span><span class="p">.</span><span class="n">screencols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span></ins><ins class="line">      <span class="k">break</span><span class="p">;</span></ins><div class="line"></div><div class="line">    <span class="k">case</span> <span class="n">PAGE_UP</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">PAGE_DOWN</span><span class="p">:</span></div><div class="line">      <span class="p">{</span></div><div class="line">        <span class="kt">int</span> <span class="n">times</span> <span class="o">=</span> <span class="n">E</span><span class="p">.</span><span class="n">screenrows</span><span class="p">;</span></div><div class="line">        <span class="k">while</span> <span class="p">(</span><span class="n">times</span><span class="o">--</span><span class="p">)</span></div><div class="line">          <span class="n">editorMoveCursor</span><span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="n">PAGE_UP</span> <span class="o">?</span> <span class="n">ARROW_UP</span> <span class="o">:</span> <span class="n">ARROW_DOWN</span><span class="p">);</span></div><div class="line">      <span class="p">}</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line"></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_UP</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_DOWN</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_LEFT</span><span class="p">:</span></div><div class="line">    <span class="k">case</span> <span class="n">ARROW_RIGHT</span><span class="p">:</span></div><div class="line">      <span class="n">editorMoveCursor</span><span class="p">(</span><span class="n">c</span><span class="p">);</span></div><div class="line">      <span class="k">break</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c2">♐&#xFE0E; compiles</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+/*** data ***/
+/*** terminal ***/
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+void editorMoveCursor(int key) { … }
+void editorProcessKeypress() {
+  int c = editorReadKey();
+  switch (c) {
+    case CTRL_KEY('q'):
+      write(STDOUT_FILENO, "\x1b[2J", 4);
+      write(STDOUT_FILENO, "\x1b[H", 3);
+      exit(0);
+      break;
+    case HOME_KEY:
+      E.cx = 0;
+      break;
+    case END_KEY:
+      E.cx = E.screencols - 1;
+      break;
+    case PAGE_UP:
+    case PAGE_DOWN:
+      {
+        int times = E.screenrows;
+        while (times--)
+          editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+      }
+      break;
+    case ARROW_UP:
+    case ARROW_DOWN:
+    case ARROW_LEFT:
+    case ARROW_RIGHT:
+      editorMoveCursor(c);
+      break;
+  }
+}
+/*** init ***/
+```
 
 If you're on a laptop with an `Fn` key, you may be able to press
 `Fn`+`<-` and `Fn`+`->` to simulate
 pressing the `Home` and `End` keys.
-##  key](#the-delete-key)
+
+##  [the delete key](#the delete key)
 
 Lastly, let's detect when the `Delete` key is pressed. It simply sends
 the escape sequence `<esc>[3~`, so it's easy to add to our switch statement. We
 won't make this key do anything for now.
 
-<div class="diff">
-<div class="diff-header">
-  <div class="step-filename">[kilo.c](https://github.com/snaptoken/kilo-src/blob/detect-delete-key/kilo.c)</div>
-  <div class="step-number">Step 54</div>
-  <div class="step-name">[detect-delete-key](https://github.com/snaptoken/kilo-src/tree/detect-delete-key)</div>
-</div><pre class="highlight">`<div class="line folded"><span class="cm">/*** includes ***/</span></div><div class="line"><span class="cm">/*** defines ***/</span></div><div class="line"></div><div class="line"><span class="cp">#define KILO_VERSION "0.0.1"</span></div><div class="line"></div><div class="line"><span class="cp">#define CTRL_KEY(k) ((k) &amp; 0x1f)</span></div><div class="line"></div><div class="line"><span class="k">enum</span> <span class="n">editorKey</span> <span class="p">{</span></div><div class="line">  <span class="n">ARROW_LEFT</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_RIGHT</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_UP</span><span class="p">,</span></div><div class="line">  <span class="n">ARROW_DOWN</span><span class="p">,</span></div><ins class="line">  <span class="n">DEL_KEY</span><span class="p">,</span></ins><div class="line">  <span class="n">HOME_KEY</span><span class="p">,</span></div><div class="line">  <span class="n">END_KEY</span><span class="p">,</span></div><div class="line">  <span class="n">PAGE_UP</span><span class="p">,</span></div><div class="line">  <span class="n">PAGE_DOWN</span></div><div class="line"><span class="p">};</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** data ***/</span></div><div class="line"><span class="cm">/*** terminal ***/</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">die</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">disableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">void</span> <span class="nf">enableRawMode</span><span class="p">()</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line"><span class="kt">int</span> <span class="nf">editorReadKey</span><span class="p">()</span> <span class="p">{</span></div><div class="line">  <span class="kt">int</span> <span class="n">nread</span><span class="p">;</span></div><div class="line">  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="k">while</span> <span class="p">((</span><span class="n">nread</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">c</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">errno</span> <span class="o">!=</span> <span class="n">EAGAIN</span><span class="p">)</span> <span class="n">die</span><span class="p">(</span><span class="s">"read"</span><span class="p">);</span></div><div class="line">  <span class="p">}</span></div><div class="line"></div><div class="line">  <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'\x1b'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">    <span class="kt">char</span> <span class="n">seq</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line"></div><div class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'['</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">>=</span> <span class="sc">'0'</span> <span class="o">&amp;&amp;</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o"><=</span> <span class="sc">'9'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'~'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">          <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><div class="line">            <span class="k">case</span> <span class="sc">'1'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></div><ins class="line">            <span class="k">case</span> <span class="sc">'3'</span><span class="p">:</span> <span class="k">return</span> <span class="n">DEL_KEY</span><span class="p">;</span></ins><div class="line">            <span class="k">case</span> <span class="sc">'4'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></div><div class="line">            <span class="k">case</span> <span class="sc">'5'</span><span class="p">:</span> <span class="k">return</span> <span class="n">PAGE_UP</span><span class="p">;</span></div><div class="line">            <span class="k">case</span> <span class="sc">'6'</span><span class="p">:</span> <span class="k">return</span> <span class="n">PAGE_DOWN</span><span class="p">;</span></div><div class="line">            <span class="k">case</span> <span class="sc">'7'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></div><div class="line">            <span class="k">case</span> <span class="sc">'8'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></div><div class="line">          <span class="p">}</span></div><div class="line">        <span class="p">}</span></div><div class="line">      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">        <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><div class="line">          <span class="k">case</span> <span class="sc">'A'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_UP</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'B'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_DOWN</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'C'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_RIGHT</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'D'</span><span class="p">:</span> <span class="k">return</span> <span class="n">ARROW_LEFT</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'H'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></div><div class="line">          <span class="k">case</span> <span class="sc">'F'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></div><div class="line">        <span class="p">}</span></div><div class="line">      <span class="p">}</span></div><div class="line">    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'O'</span><span class="p">)</span> <span class="p">{</span></div><div class="line">      <span class="k">switch</span> <span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span></div><div class="line">        <span class="k">case</span> <span class="sc">'H'</span><span class="p">:</span> <span class="k">return</span> <span class="n">HOME_KEY</span><span class="p">;</span></div><div class="line">        <span class="k">case</span> <span class="sc">'F'</span><span class="p">:</span> <span class="k">return</span> <span class="n">END_KEY</span><span class="p">;</span></div><div class="line">      <span class="p">}</span></div><div class="line">    <span class="p">}</span></div><div class="line"></div><div class="line">    <span class="k">return</span> <span class="sc">'\x1b'</span><span class="p">;</span></div><div class="line">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></div><div class="line">    <span class="k">return</span> <span class="n">c</span><span class="p">;</span></div><div class="line">  <span class="p">}</span></div><div class="line"><span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getCursorPosition</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="kt">int</span> <span class="nf">getWindowSize</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">rows</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">cols</span><span class="p">)</span> <span class="p">{</span>  ...  <span class="p">}</span></div><div class="line"></div><div class="line folded"><span class="cm">/*** append buffer ***/</span></div><div class="line folded"><span class="cm">/*** output ***/</span></div><div class="line folded"><span class="cm">/*** input ***/</span></div><div class="line folded"><span class="cm">/*** init ***/</span></div>`</pre>
-<div class="diff-footer">
-  <div class="diff-tag-c1">♎&#xFE0E; compiles, but with no observable effects</div>
-</div>
-</div>
-
+```c
+/*** includes ***/
+/*** defines ***/
+#define KILO_VERSION "0.0.1"
+#define CTRL_KEY(k) ((k) & 0x1f)
+enum editorKey {
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT,
+  ARROW_UP,
+  ARROW_DOWN,
+  DEL_KEY,
+  HOME_KEY,
+  END_KEY,
+  PAGE_UP,
+  PAGE_DOWN
+};
+/*** data ***/
+/*** terminal ***/
+void die(const char *s) { … }
+void disableRawMode() { … }
+void enableRawMode() { … }
+int editorReadKey() {
+  int nread;
+  char c;
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+    if (nread == -1 && errno != EAGAIN) die("read");
+  }
+  if (c == '\x1b') {
+    char seq[3];
+    if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+    if (seq[0] == '[') {
+      if (seq[1] >= '0' && seq[1] <= '9') {
+        if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+        if (seq[2] == '~') {
+          switch (seq[1]) {
+            case '1': return HOME_KEY;
+            case '3': return DEL_KEY;
+            case '4': return END_KEY;
+            case '5': return PAGE_UP;
+            case '6': return PAGE_DOWN;
+            case '7': return HOME_KEY;
+            case '8': return END_KEY;
+          }
+        }
+      } else {
+        switch (seq[1]) {
+          case 'A': return ARROW_UP;
+          case 'B': return ARROW_DOWN;
+          case 'C': return ARROW_RIGHT;
+          case 'D': return ARROW_LEFT;
+          case 'H': return HOME_KEY;
+          case 'F': return END_KEY;
+        }
+      }
+    } else if (seq[0] == 'O') {
+      switch (seq[1]) {
+        case 'H': return HOME_KEY;
+        case 'F': return END_KEY;
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
+}
+int getCursorPosition(int *rows, int *cols) { … }
+int getWindowSize(int *rows, int *cols) { … }
+/*** append buffer ***/
+/*** output ***/
+/*** input ***/
+/*** init ***/
+```
 
 If you're on a laptop with an `Fn` key, you may be able to press
 `Fn`+`Backspace` to simulate pressing the `Delete`
 key.
 
-In the [next chapter](04.aTextViewer.html), we will get our program to display
+In the [next chapter](04_aTextViewer.md), we will get our program to display
 text files, complete with vertical and horizontal scrolling and a status bar.
 
-    </div>
-    <div id="version">
-      [1.0.0beta11](https://github.com/snaptoken/kilo-tutorial/tree/v1.0.0beta11)
-      ([changelog](https://github.com/snaptoken/kilo-tutorial/blob/master/CHANGELOG.md))
-    </div>
-    <footer class="bar">
-      <nav>
-        [top of page](#)
-      </nav>
-    </footer>
-  </body>
-</html>
-
+[<- prev](02_enteringRawMode.md)
+[contents](index.md)
+[next ->](04_aTextViewer.md)
