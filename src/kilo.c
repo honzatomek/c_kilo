@@ -20,6 +20,8 @@ void enableRawMode() {
     atexit(disableRawMode);
 
     struct termios raw = orig_termios; /* from <termios.h> */
+    /* IXON turns off sending XON and XOFF (Ctrl-S and Ctrl-Q) */
+    raw.c_iflag &= ~(IXON);
     /* ECHO causes all keys to be printed to the terminal
      * bitflag defined as 00000000000000000000000000001000
      * turned off using AND(flags, NOT(ECHO))
