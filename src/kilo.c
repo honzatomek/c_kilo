@@ -1,14 +1,26 @@
+#include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
 
+struct termios orig_termios;
+
+void disableRawMode() {
+    /* reset the terminal attributes after program exit */
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+}
+
 void enableRawMode() {
-    struct termios raw; /* from <termios.h> */
+    /* backup terminal attributes */
+    tcgetattr(STDIN_FILENO, &orig_termios);
+    /* from <stdlib.h>, used to register disableRawMode() function to be called
+     * automatically when the program exits, either by returning from main()
+     * or calling exit() function */
+    atexit(disableRawMode);
 
-    tcgetattr(STDIN_FILENO, &raw);
-
+    struct termios raw = orig_termios; /* from <termios.h> */
     /* ECHO causes all keys to be printed to the terminal
      * bitflag defined as 00000000000000000000000000001000
-     * turned using AND(flags, NOT(ECHO)) */
+     * turned off using AND(flags, NOT(ECHO)) */
     raw.c_lflag &= ~(ECHO);
 
     /* TCSAFLUSH: when to apply flag change - waits for pending output to be
