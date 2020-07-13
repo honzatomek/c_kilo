@@ -1,3 +1,5 @@
+#include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
@@ -33,6 +35,17 @@ int main() {
     enableRawMode();
 
     char c;
-    while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q');
+    while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
+        /* test whether char is control character <ctype.h> */
+        if (iscntrl(c)) {
+            /* from <stdio.h>
+             * %d means format byte as decimal number
+             * %c means to write the byte directly, as a character */
+            printf("%d\n", c);
+        } else {
+            printf("%d ('%c')\n", c, c);
+        }
+    }
+
     return 0;
 }
