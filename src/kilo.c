@@ -24,6 +24,9 @@ void enableRawMode() {
      * ICRNL from <termios.h>, turns Ctrl-M + Enter are read as 13 instead of 10
      * (terminal is translation \r to \n) */
     raw.c_iflag &= ~(ICRNL | IXON);
+    /* OPOST - from <termios.h>, turn off output processing (e.g. translating
+     * \n to \r\n) */
+    raw.c_oflag &= ~(OPOST);
     /* ECHO causes all keys to be printed to the terminal
      * bitflag defined as 00000000000000000000000000001000
      * turned off using AND(flags, NOT(ECHO))
