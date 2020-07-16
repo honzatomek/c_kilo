@@ -26,8 +26,9 @@ void enableRawMode() {
      * bitflag defined as 00000000000000000000000000001000
      * turned off using AND(flags, NOT(ECHO))
      * ICANON sets canonical mode on and off
-     * ISIG turn off SIGINT and SIGSTP (Ctrl-C and Ctrl-Z) */
-    raw.c_lflag &= ~(ECHO | ICANON | ISIG);
+     * ISIG turn off SIGINT and SIGSTP (Ctrl-C and Ctrl-Z)
+     * IEXTEN from <termios.h> turns off Ctrl-V and Ctrl-O */
+    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
     /* TCSAFLUSH: when to apply flag change - waits for pending output to be
      * written to the terminal, discards any unread input */
