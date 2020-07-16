@@ -22,11 +22,18 @@ void enableRawMode() {
     struct termios raw = orig_termios; /* from <termios.h> */
     /* IXON turns off sending XON and XOFF (Ctrl-S and Ctrl-Q)
      * ICRNL from <termios.h>, turns Ctrl-M + Enter are read as 13 instead of 10
-     * (terminal is translation \r to \n) */
-    raw.c_iflag &= ~(ICRNL | IXON);
+     * (terminal is translation \r to \n)
+     * + additional flags to turn on terminal RAW mode
+     * BRKINT - if break condition occures, it will cause SIGINT to be sent to the program
+     * INPCK - enables parity checking (off for modern terminals)
+     * ISTRIP - causes 8th bit of each input byte to be stripped (set to 0) */
+    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     /* OPOST - from <termios.h>, turn off output processing (e.g. translating
      * \n to \r\n) */
     raw.c_oflag &= ~(OPOST);
+    /* additional flags to turn on terminal RAW mode
+     * CS8 - a bit mask to set Character Size to 8 bits per byte */
+    raw.c_cflag |= (CS8);
     /* ECHO causes all keys to be printed to the terminal
      * bitflag defined as 00000000000000000000000000001000
      * turned off using AND(flags, NOT(ECHO))
