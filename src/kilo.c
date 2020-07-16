@@ -23,6 +23,10 @@ struct termios orig_termios;
 // terminal --------------------------------------------------------------- {{{1
 
 void die(const char *s) {                                                // {{{2
+    /* clear the screen and reposition the cursor at the start of screen */
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+
     /* from <stdio.h> - prints error message based on global variable errno */
     perror(s);
     /* from <stdlib.h> - exit the program with exit status 1 (non-zero value = failure) */
@@ -95,8 +99,8 @@ char editorReadKey() {                                                   // {{{2
 }
 
 // output ----------------------------------------------------------------- {{{1
-void editorRefreshScreen() {
 
+void editorRefreshScreen() {                                             // {{{2
     /* from <unistd.h>, write 4 bytes to standard output
      * \x1b is an escape character (27, <esc>), the other 3 bytes are [2J
      * control characters:
@@ -114,6 +118,10 @@ void editorRefreshScreen() {
 // input ------------------------------------------------------------------ {{{1
 
 void editorProcessKeypress() {                                           // {{{2
+    /* clear the screen and reposition the cursor at the start of screen */
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+
     /* wait for keypress and handle it */
     char c = editorReadKey();
 
