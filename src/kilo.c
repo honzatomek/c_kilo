@@ -42,6 +42,13 @@ void enableRawMode() {
      * IEXTEN from <termios.h> turns off Ctrl-V and Ctrl-O */
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
+    /* control characters field <termios.h>
+     * VMIN - minimum number of bytes of input needed before read() can return
+     * VTIME - maximum amount of time to wait before read() returns (1 = 0.1s)
+     * if read() times out the return value is 0, otherwise number of bytes read */
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 1;
+
     /* TCSAFLUSH: when to apply flag change - waits for pending output to be
      * written to the terminal, discards any unread input */
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
@@ -50,8 +57,9 @@ void enableRawMode() {
 int main() {
     enableRawMode();
 
-    char c;
-    while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
+    while (1) {
+        char c = '\0';
+        read(STDIN_FILENO, &c, 1);
         /* test whether char is control character <ctype.h> */
         if (iscntrl(c)) {
             /* from <stdio.h>
@@ -61,6 +69,7 @@ int main() {
         } else {
             printf("%d ('%c')\r\n", c, c);
         }
+        if (c == 'q') break;
     }
 
     return 0;
