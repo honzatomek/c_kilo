@@ -94,6 +94,18 @@ char editorReadKey() {                                                   // {{{2
     return c;
 }
 
+// output ----------------------------------------------------------------- {{{1
+void editorRefreshScreen() {
+
+    /* from <unistd.h>, write 4 bytes to standard output
+     * \x1b is an escape character (27, <esc>), the other 3 bytes are [2J
+     * control characters:
+     * [0J = clear screen from cursor down
+     * [1J = clear screen up to cursor
+     * [2J = clear whole screen */
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+}
+
 // input ------------------------------------------------------------------ {{{1
 
 void editorProcessKeypress() {                                           // {{{2
@@ -115,6 +127,7 @@ int main() {                                                             // {{{2
     enableRawMode();
 
     while (1) {
+        editorRefreshScreen();
         editorProcessKeypress();
     }
 
