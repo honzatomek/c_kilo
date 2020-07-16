@@ -22,20 +22,20 @@ struct termios orig_termios;
 
 // terminal --------------------------------------------------------------- {{{1
 
-void die(const char *s) {
+void die(const char *s) {                                                // {{{2
     /* from <stdio.h> - prints error message based on global variable errno */
     perror(s);
     /* from <stdlib.h> - exit the program with exit status 1 (non-zero value = failure) */
     exit(1);
 }
 
-void disableRawMode() {
+void disableRawMode() {                                                  // {{{2
     /* reset the terminal attributes after program exit,
      * test the tcsetattr for error */
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) die("tcsetattr");
 }
 
-void enableRawMode() {
+void enableRawMode() {                                                   // {{{2
     /* backup terminal attributes, test the tcgetattr for error */
     if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) die("tcgetattr");
     /* from <stdlib.h>, used to register disableRawMode() function to be called
@@ -79,29 +79,43 @@ void enableRawMode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
+char editorReadKey() {                                                   // {{{2
+    /* wait for one keypress and return it
+     * low level terminal interaction */
+    int nread;
+    char c;
+    /* read 1 character from standard input */
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        /* test read for error, errno and EAGAIN come from <errno.h>,
+         * we don't treat EAGAIN as error for portability to Cygwin
+         * (it returns -1 with EAGAIN if read() times out */
+        if (nread == -1 && errno != EAGAIN) die("read");
+    }
+    return c;
+}
+
+// input ------------------------------------------------------------------ {{{1
+
+void editorProcessKeypress() {                                           // {{{2
+    /* wait for keypress and handle it */
+    char c = editorReadKey();
+
+    switch (c) {
+        /* check whether pressed key = 'q' with bits 5-7 stripped off */
+        case CTRL_KEY('q'):
+            exit(0);
+            break;
+    }
+}
+
 // init ------------------------------------------------------------------- {{{1
 
-int main() {
+int main() {                                                             // {{{2
+    /* simplified the main() function */
     enableRawMode();
 
     while (1) {
-        char c = '\0';
-        /* read 1 character from standard input, test read for error
-         * errno and EAGAIN come from <errno.h>, we don't treat EAGAIN as
-         * error for portability to Cygwin (it returns -1 with EAGAIN if read()
-         * times out */
-        if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) die("read");
-        /* test whether char is control character <ctype.h> */
-        if (iscntrl(c)) {
-            /* from <stdio.h>
-             * %d means format byte as decimal number
-             * %c means to write the byte directly, as a character */
-            printf("%d\r\n", c);
-        } else {
-            printf("%d ('%c')\r\n", c, c);
-        }
-        /* check whether pressed key = 'q' with bits 5-7 stripped off */
-        if (c == CTRL_KEY('q')) break;
+        editorProcessKeypress();
     }
 
     return 0;
