@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
@@ -14,13 +15,14 @@ void die(const char *s) {
 }
 
 void disableRawMode() {
-    /* reset the terminal attributes after program exit */
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+    /* reset the terminal attributes after program exit,
+     * test the tcsetattr for error */
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) die("tcsetattr");
 }
 
 void enableRawMode() {
-    /* backup terminal attributes */
-    tcgetattr(STDIN_FILENO, &orig_termios);
+    /* backup terminal attributes, test the tcgetattr for error */
+    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) die("tcgetattr");
     /* from <stdlib.h>, used to register disableRawMode() function to be called
      * automatically when the program exits, either by returning from main()
      * or calling exit() function */
@@ -57,8 +59,9 @@ void enableRawMode() {
     raw.c_cc[VTIME] = 1;
 
     /* TCSAFLUSH: when to apply flag change - waits for pending output to be
-     * written to the terminal, discards any unread input */
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+     * written to the terminal, discards any unread input
+     * test tcsetattr for error */
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
 int main() {
@@ -66,7 +69,11 @@ int main() {
 
     while (1) {
         char c = '\0';
-        read(STDIN_FILENO, &c, 1);
+        /* read 1 character from standard input, test read for error
+         * errno and EAGAIN come from <errno.h>, we don't treat EAGAIN as
+         * error for portability to Cygwin (it returns -1 with EAGAIN if read()
+         * times out */
+        if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) die("read");
         /* test whether char is control character <ctype.h> */
         if (iscntrl(c)) {
             /* from <stdio.h>
