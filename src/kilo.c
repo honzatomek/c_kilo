@@ -7,6 +7,15 @@
 #include <termios.h>
 #include <unistd.h>
 
+// defines ---------------------------------------------------------------- {{{1
+
+/* CTRL_KEY macro does a bitwise AND of character with the value 00011111 in
+ * binary = sets the upper 3 bits of character to 0 (Ctrl key strips bits 5 and 6
+ * bitwise of any char that is pressed with Ctrl and sends that, bit numbering
+ * starts from 0)
+ * also to switch case for characters it is possible to toggle bit 5 */
+#define CTRL_KEY(k) ((k) & 0x1f)
+
 // data ------------------------------------------------------------------- {{{1
 
 struct termios orig_termios;
@@ -91,7 +100,8 @@ int main() {
         } else {
             printf("%d ('%c')\r\n", c, c);
         }
-        if (c == 'q') break;
+        /* check whether pressed key = 'q' with bits 5-7 stripped off */
+        if (c == CTRL_KEY('q')) break;
     }
 
     return 0;
