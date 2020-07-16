@@ -104,6 +104,11 @@ void editorRefreshScreen() {
      * [1J = clear screen up to cursor
      * [2J = clear whole screen */
     write(STDOUT_FILENO, "\x1b[2J", 4);
+    /* escaoe sequence 3 bytes long
+     * control characters for positioning the cursor:
+     * [12;40H - positions the cursor to the middle of screen on 80x24 terminal
+     * [row;columnH, the indexes are 1 based, default is [1;1H = [H */
+    write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
 // input ------------------------------------------------------------------ {{{1
