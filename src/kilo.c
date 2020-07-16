@@ -100,6 +100,15 @@ char editorReadKey() {                                                   // {{{2
 
 // output ----------------------------------------------------------------- {{{1
 
+void editorDrawRows() {                                                  // {{{2
+    /* write tildes at the beginning of each line */
+    int y;
+    /* assume 24 row high terminal */
+    for (y = 0; y < 24; y++) {
+        write(STDOUT_FILENO, "~\r\n", 3);
+    }
+}
+
 void editorRefreshScreen() {                                             // {{{2
     /* from <unistd.h>, write 4 bytes to standard output
      * \x1b is an escape character (27, <esc>), the other 3 bytes are [2J
@@ -113,21 +122,25 @@ void editorRefreshScreen() {                                             // {{{2
      * [12;40H - positions the cursor to the middle of screen on 80x24 terminal
      * [row;columnH, the indexes are 1 based, default is [1;1H = [H */
     write(STDOUT_FILENO, "\x1b[H", 3);
+
+    editorDrawRows();
+
+    /* repostion the cursor at beginning after drawing rows */
+    write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
 // input ------------------------------------------------------------------ {{{1
 
 void editorProcessKeypress() {                                           // {{{2
-    /* clear the screen and reposition the cursor at the start of screen */
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-    write(STDOUT_FILENO, "\x1b[H", 3);
-
     /* wait for keypress and handle it */
     char c = editorReadKey();
 
     switch (c) {
         /* check whether pressed key = 'q' with bits 5-7 stripped off */
         case CTRL_KEY('q'):
+            /* clear the screen and reposition the cursor at the start of screen */
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
     }
