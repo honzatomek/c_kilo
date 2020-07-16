@@ -1,3 +1,5 @@
+// includes --------------------------------------------------------------- {{{1
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -5,7 +7,11 @@
 #include <termios.h>
 #include <unistd.h>
 
+// data ------------------------------------------------------------------- {{{1
+
 struct termios orig_termios;
+
+// terminal --------------------------------------------------------------- {{{1
 
 void die(const char *s) {
     /* from <stdio.h> - prints error message based on global variable errno */
@@ -64,6 +70,8 @@ void enableRawMode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
+// init ------------------------------------------------------------------- {{{1
+
 int main() {
     enableRawMode();
 
@@ -88,3 +96,5 @@ int main() {
 
     return 0;
 }
+
+// vim: foldmethod=marker
