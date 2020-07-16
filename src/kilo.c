@@ -6,6 +6,13 @@
 
 struct termios orig_termios;
 
+void die(const char *s) {
+    /* from <stdio.h> - prints error message based on global variable errno */
+    perror(s);
+    /* from <stdlib.h> - exit the program with exit status 1 (non-zero value = failure) */
+    exit(1);
+}
+
 void disableRawMode() {
     /* reset the terminal attributes after program exit */
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
