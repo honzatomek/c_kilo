@@ -111,7 +111,28 @@ char editorReadKey() {                                                   // {{{2
     return c;
 }
 
-int getWindowSize(int *rows, int *cols) {
+int getCursorPosition(int *rows, int *cols) {                            // {{{2
+    /* send [6n command to query the terminal for cursor position
+     * (n = device status report request, 6 = cursor position */
+    /* returns an escape sequence to stdout: \x1b[24;80R or similar */
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+
+    printf("\r\n");
+    char c;
+    while (read(STDIN_FILENO, &c, 1) == 1) {
+        if (iscntrl(c)) {
+            printf("%d\r\n", c);
+        } else {
+            printf("%d ('%c')\r\n", c, c);
+        }
+    }
+
+    editorReadKey();
+
+    return 1;
+}
+
+int getWindowSize(int *rows, int *cols) {                                // {{{2
     /* from <sys/ioctl.h> */
     struct winsize ws;
 
@@ -125,10 +146,7 @@ int getWindowSize(int *rows, int *cols) {
          * end: [999C moves cursor right by 999 columns (stops at screen edge)
          *      [999B moves cursor down by 999 row (stops at screen edge) */
         if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
-        /* read key for testing before program exits */
-        editorReadKey();
-        /* if ioctl() fails, return -1 */
-        return -1;
+        return getCursorPosition(rows, cols);
     } else {
         /* on ioctl success save window size and return 0 */
         *cols = ws.ws_col;
