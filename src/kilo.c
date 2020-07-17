@@ -22,6 +22,8 @@
 struct editorConfig {                                                    // {{{2
     /* set up global struct to contain the editor state
      * e.g. width and height of terminal */
+    int screenrows;
+    int screencols;
     struct termios orig_termios;
 };
 
@@ -113,7 +115,7 @@ int getWindowSize(int *rows, int *cols) {
     /* from <sys/ioctl.h> */
     struct winsize ws;
 
-    /* from <sys/ioctl.h> 
+    /* from <sys/ioctl.h>
      * on succes the ioctl() will place the terminal window size into struct
      * winsize struct, on failure returns -1
      * we also check the returned values for 0 as that is possible error */
@@ -178,9 +180,15 @@ void editorProcessKeypress() {                                           // {{{2
 
 // init ------------------------------------------------------------------- {{{1
 
+void initEditor() {
+    if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+}
+
 int main() {                                                             // {{{2
     /* simplified the main() function */
     enableRawMode();
+    /* initialize all the fields inf the E struct */
+    initEditor();
 
     while (1) {
         editorRefreshScreen();
