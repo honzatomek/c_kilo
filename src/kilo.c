@@ -18,7 +18,14 @@
 
 // data ------------------------------------------------------------------- {{{1
 
-struct termios orig_termios;
+struct editorConfig {
+    /* set up global struct to contain the editor state
+     * e.g. width and height of terminal */
+    struct termios orig_termios;
+};
+
+/* global variable storing editor configuration */
+struct editorConfig E;
 
 // terminal --------------------------------------------------------------- {{{1
 
@@ -35,19 +42,22 @@ void die(const char *s) {                                                // {{{2
 
 void disableRawMode() {                                                  // {{{2
     /* reset the terminal attributes after program exit,
-     * test the tcsetattr for error */
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) die("tcsetattr");
+     * test the tcsetattr for error
+     * use settings from stored global struct */
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
+        die("tcsetattr");
 }
 
 void enableRawMode() {                                                   // {{{2
-    /* backup terminal attributes, test the tcgetattr for error */
-    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) die("tcgetattr");
+    /* backup terminal attributes, test the tcgetattr for error
+     * store the attributes in global struct */
+    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) die("tcgetattr");
     /* from <stdlib.h>, used to register disableRawMode() function to be called
      * automatically when the program exits, either by returning from main()
      * or calling exit() function */
     atexit(disableRawMode);
 
-    struct termios raw = orig_termios; /* from <termios.h> */
+    struct termios raw = E.orig_termios; /* from <termios.h> */
     /* IXON turns off sending XON and XOFF (Ctrl-S and Ctrl-Q)
      * ICRNL from <termios.h>, turns Ctrl-M + Enter are read as 13 instead of 10
      * (terminal is translation \r to \n)
