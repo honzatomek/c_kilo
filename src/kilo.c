@@ -135,8 +135,8 @@ int getWindowSize(int *rows, int *cols) {
 void editorDrawRows() {                                                  // {{{2
     /* write tildes at the beginning of each line */
     int y;
-    /* assume 24 row high terminal */
-    for (y = 0; y < 24; y++) {
+    /* print tildes on each row of screen */
+    for (y = 0; y < E.screenrows; y++) {
         write(STDOUT_FILENO, "~\r\n", 3);
     }
 }
