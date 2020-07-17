@@ -119,7 +119,14 @@ int getWindowSize(int *rows, int *cols) {
      * on succes the ioctl() will place the terminal window size into struct
      * winsize struct, on failure returns -1
      * we also check the returned values for 0 as that is possible error */
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    /* the 1 || condition is for checking fallback branch temporarily */
+    if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        /* if ioctl() cannot return terminal size, position the cursor at the
+         * end: [999C moves cursor right by 999 columns (stops at screen edge)
+         *      [999B moves cursor down by 999 row (stops at screen edge) */
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+        /* read key for testing before program exits */
+        editorReadKey();
         /* if ioctl() fails, return -1 */
         return -1;
     } else {
