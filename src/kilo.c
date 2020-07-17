@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -18,7 +19,7 @@
 
 // data ------------------------------------------------------------------- {{{1
 
-struct editorConfig {
+struct editorConfig {                                                    // {{{2
     /* set up global struct to contain the editor state
      * e.g. width and height of terminal */
     struct termios orig_termios;
@@ -106,6 +107,25 @@ char editorReadKey() {                                                   // {{{2
         if (nread == -1 && errno != EAGAIN) die("read");
     }
     return c;
+}
+
+int getWindowSize(int *rows, int *cols) {
+    /* from <sys/ioctl.h> */
+    struct winsize ws;
+
+    /* from <sys/ioctl.h> 
+     * on succes the ioctl() will place the terminal window size into struct
+     * winsize struct, on failure returns -1
+     * we also check the returned values for 0 as that is possible error */
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        /* if ioctl() fails, return -1 */
+        return -1;
+    } else {
+        /* on ioctl success save window size and return 0 */
+        *cols = ws.ws_col;
+        *rows = ws.ws_row;
+        return 0;
+    }
 }
 
 // output ----------------------------------------------------------------- {{{1
