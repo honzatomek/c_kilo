@@ -112,20 +112,27 @@ char editorReadKey() {                                                   // {{{2
 }
 
 int getCursorPosition(int *rows, int *cols) {                            // {{{2
+    /* buffer variable to store [6n command output */
+    char buf[32];
+    unsigned int i = 0;
+
     /* send [6n command to query the terminal for cursor position
      * (n = device status report request, 6 = cursor position */
     /* returns an escape sequence to stdout: \x1b[24;80R or similar */
     if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
 
-    printf("\r\n");
-    char c;
-    while (read(STDIN_FILENO, &c, 1) == 1) {
-        if (iscntrl(c)) {
-            printf("%d\r\n", c);
-        } else {
-            printf("%d ('%c')\r\n", c, c);
-        }
+    while (i < sizeof(buf) - 1) {
+        /* read chars into the prepared buffer */
+        if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+        /* stop on 'R' character */
+        if (buf[i] == 'R') break;
+        i++;
     }
+    /* printf() function expects the last char of string to be null char */
+    buf[i] = '\0';
+
+    /* print the read string */
+    printf("\r\n&buf[1]: '%s'\r\n", &buf[1]);
 
     editorReadKey();
 
