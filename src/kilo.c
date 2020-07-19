@@ -264,9 +264,13 @@ void editorRefreshScreen() {                                             // {{{2
 
     editorDrawRows(&ab);
 
-    /* repostion the cursor at beginning after drawing rows */
-    /* append to buffer */
-    abAppend(&ab, "\x1b[H", 3);
+    /* position the cursor */
+    char buf[32];
+    /* use snprintf() to inject cursor position into string in buf variable */
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+    /* strlen() is form <string.h> */
+    abAppend(&ab, buf, strlen(buf));
+
     /* escape sequence to show the cursor */
     abAppend(&ab, "\x1b[?25h", 6);
 
