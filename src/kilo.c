@@ -208,6 +208,11 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
     for (y = 0; y < E.screenrows; y++) {
        abAppend(ab, "~", 1);
 
+        /* clear line before repainting
+         * [0K = clear line from cursor right (default)
+         * [1K = clear line up to cursor
+         * [2K = clear whole line */
+        abAppend(ab, "\x1b[K", 3);
         /* do not print carriage return on last line of screen */
         if (y < E.screenrows - 1) {
             abAppend(ab, "\r\n", 2);
@@ -226,9 +231,7 @@ void editorRefreshScreen() {                                             // {{{2
      * [0J = clear screen from cursor down
      * [1J = clear screen up to cursor
      * [2J = clear whole screen */
-    /* append to buffer */
-    abAppend(&ab, "\x1b[2J", 4);
-    /* escaoe sequence 3 bytes long
+    /* escape sequence 3 bytes long
      * control characters for positioning the cursor:
      * [12;40H - positions the cursor to the middle of screen on 80x24 terminal
      * [row;columnH, the indexes are 1 based, default is [1;1H = [H */
