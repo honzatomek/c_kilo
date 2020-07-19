@@ -11,6 +11,8 @@
 
 // defines ---------------------------------------------------------------- {{{1
 
+#define KILO_VERSION "0.0.1"
+
 /* CTRL_KEY macro does a bitwise AND of character with the value 00011111 in
  * binary = sets the upper 3 bits of character to 0 (Ctrl key strips bits 5 and 6
  * bitwise of any char that is pressed with Ctrl and sends that, bit numbering
@@ -204,9 +206,20 @@ void abFree(struct abuf *ab) {                                           // {{{2
 void editorDrawRows(struct abuf *ab) {                                   // {{{2
     /* write tildes at the beginning of each line */
     int y;
-    /* print tildes on each row of screen */
     for (y = 0; y < E.screenrows; y++) {
-       abAppend(ab, "~", 1);
+        if (y == E.screenrows / 3) {
+            char welcome[80];
+            /* snpfintf() form <stdio.h>, used to interpolate kilo version
+             * into the welcome message */
+            int welcomelen = snprintf(welcome, sizeof(welcome),
+                    "Kilo editor -- version %s", KILO_VERSION);
+            /* truncate the welcome message if it does not fit to screen */
+            if (welcomelen > E.screencols) welcomelen = E.screencols;
+            abAppend(ab, welcome, welcomelen);
+        } else {
+            /* print tildes on each row of screen */
+           abAppend(ab, "~", 1);
+        }
 
         /* clear line before repainting
          * [0K = clear line from cursor right (default)
