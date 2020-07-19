@@ -114,7 +114,39 @@ char editorReadKey() {                                                   // {{{2
          * (it returns -1 with EAGAIN if read() times out */
         if (nread == -1 && errno != EAGAIN) die("read");
     }
-    return c;
+
+    /* if we read an escape character */
+    if (c == '\x1b') {
+        /* escape sequence buffer, 3 bytes long to process also other escape
+         * sequences apart from arrow keys */
+        char seq[3];
+
+        /* automatically read tow more bytes into seq buffer, if the read()
+         * function times out, assume the user pressed <esc> and return
+         * that */
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+
+        if (seq[0] == '[') {
+            switch (seq[1]) {
+                /* \x1b[A = up arrow */
+                case 'A': return 'w';
+                /* \x1b[B = down arrow */
+                case 'B': return 's';
+                /* \x1b[C = right arrow */
+                case 'C': return 'd';
+                /* \x1b[D = left arrow */
+                case 'D': return 'a';
+            }
+        }
+
+        /* if it is an escape sequence that is not yet recognised, return just
+         * escape */
+        return '\x1b';
+    } else {
+        /* return read character */
+        return c;
+    }
 }
 
 int getCursorPosition(int *rows, int *cols) {                            // {{{2
