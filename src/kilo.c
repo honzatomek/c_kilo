@@ -23,6 +23,9 @@
 // data ------------------------------------------------------------------- {{{1
 
 struct editorConfig {                                                    // {{{2
+    /* store the cursor position, cx = horizontal (left to right, zero based),
+     * cy = vertical (top to bottom, zero based)*/
+    int cx, cy;
     /* set up global struct to contain the editor state
      * e.g. width and height of terminal */
     int screenrows;
@@ -171,7 +174,7 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
 // append buffer ---------------------------------------------------------- {{{1
 
 /* struct for append buffer to print whole screen at once */
-struct abuf {
+struct abuf {                                                            // {{{2
     char *b;
     int len;
 };
@@ -292,7 +295,11 @@ void editorProcessKeypress() {                                           // {{{2
 
 // init ------------------------------------------------------------------- {{{1
 
-void initEditor() {
+void initEditor() {                                                      // {{{2
+    /* initialise the cursor position to the top left of screen */
+    E.cx = 0;
+    E.cy = 0;
+
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
