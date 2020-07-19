@@ -165,6 +165,17 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
     }
 }
 
+// append buffer ---------------------------------------------------------- {{{1
+
+/* struct for append buffer to print whole screen at once */
+struct abuf {
+    char *b;
+    int len;
+};
+
+/* constructor for abuf type */
+#define ABUF_INIT {NULL, 0}
+
 // output ----------------------------------------------------------------- {{{1
 
 void editorDrawRows() {                                                  // {{{2
