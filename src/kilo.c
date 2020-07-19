@@ -131,8 +131,12 @@ int getCursorPosition(int *rows, int *cols) {                            // {{{2
     /* printf() function expects the last char of string to be null char */
     buf[i] = '\0';
 
-    /* print the read string */
-    printf("\r\n&buf[1]: '%s'\r\n", &buf[1]);
+    /* if buffer does not start with \x1b[ then return error (-1) */
+    if (buf[0] != '\x1b' || buf[1] != '[') return -1;
+    /* sscanf() from <stdio.h>, we pass a pointer to the buffer, skipping the
+     * \x1b[ characters and tell sscanf() to parse two integers in form %d;%d
+     * and save the result into rows and cols variable */
+    if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
 
     editorReadKey();
 
