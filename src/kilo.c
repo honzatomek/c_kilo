@@ -218,6 +218,8 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
 void editorRefreshScreen() {                                             // {{{2
     /* initialise buffer ab */
     struct abuf ab = ABUF_INIT;
+    /* escape sequence to hide the cursor */
+    abAppend(&ab, "\x1b[?25l", 6);
     /* from <unistd.h>, write 4 bytes to standard output
      * \x1b is an escape character (27, <esc>), the other 3 bytes are [2J
      * control characters:
@@ -238,6 +240,8 @@ void editorRefreshScreen() {                                             // {{{2
     /* repostion the cursor at beginning after drawing rows */
     /* append to buffer */
     abAppend(&ab, "\x1b[H", 3);
+    /* escape sequence to show the cursor */
+    abAppend(&ab, "\x1b[?25h", 6);
 
     /* write the buffer contents to standard output */
     write(STDOUT_FILENO, ab.b, ab.len);
