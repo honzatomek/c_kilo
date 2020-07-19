@@ -282,6 +282,24 @@ void editorRefreshScreen() {                                             // {{{2
 
 // input ------------------------------------------------------------------ {{{1
 
+void editorMoveCursor(char key) {                                        // {{{2
+    /* use wsad for movement */
+    switch (key) {
+        case 'a':
+            E.cx--;
+            break;
+        case 'd':
+            E.cx++;
+            break;
+        case 'w':
+            E.cy--;
+            break;
+        case 's':
+            E.cy++;
+            break;
+    }
+}
+
 void editorProcessKeypress() {                                           // {{{2
     /* wait for keypress and handle it */
     char c = editorReadKey();
@@ -293,6 +311,13 @@ void editorProcessKeypress() {                                           // {{{2
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
+            break;
+        /* check for movement keys 'wsad' */
+        case 'w':
+        case 's':
+        case 'a':
+        case 'd':
+            editorMoveCursor(c);
             break;
     }
 }
