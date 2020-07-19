@@ -201,38 +201,48 @@ void abFree(struct abuf *ab) {                                           // {{{2
 
 // output ----------------------------------------------------------------- {{{1
 
-void editorDrawRows() {                                                  // {{{2
+void editorDrawRows(struct abuf *ab) {                                   // {{{2
     /* write tildes at the beginning of each line */
     int y;
     /* print tildes on each row of screen */
     for (y = 0; y < E.screenrows; y++) {
-        write(STDOUT_FILENO, "~", 1);
+       abAppend(ab, "~", 1);
 
         /* do not print carriage return on last line of screen */
         if (y < E.screenrows - 1) {
-            write(STDOUT_FILENO, "\r\n", 2);
+            abAppend(ab, "\r\n", 2);
         }
     }
 }
 
 void editorRefreshScreen() {                                             // {{{2
+    /* initialise buffer ab */
+    struct abuf ab = ABUF_INIT;
     /* from <unistd.h>, write 4 bytes to standard output
      * \x1b is an escape character (27, <esc>), the other 3 bytes are [2J
      * control characters:
      * [0J = clear screen from cursor down
      * [1J = clear screen up to cursor
      * [2J = clear whole screen */
-    write(STDOUT_FILENO, "\x1b[2J", 4);
+    /* append to buffer */
+    abAppend(&ab, "\x1b[2J", 4);
     /* escaoe sequence 3 bytes long
      * control characters for positioning the cursor:
      * [12;40H - positions the cursor to the middle of screen on 80x24 terminal
      * [row;columnH, the indexes are 1 based, default is [1;1H = [H */
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    /* append to buffer */
+    abAppend(&ab, "\x1b[H", 3);
 
-    editorDrawRows();
+    editorDrawRows(&ab);
 
     /* repostion the cursor at beginning after drawing rows */
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    /* append to buffer */
+    abAppend(&ab, "\x1b[H", 3);
+
+    /* write the buffer contents to standard output */
+    write(STDOUT_FILENO, ab.b, ab.len);
+    /* free the buffer memory */
+    abFree(&ab);
 }
 
 // input ------------------------------------------------------------------ {{{1
