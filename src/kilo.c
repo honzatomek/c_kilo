@@ -215,6 +215,14 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
                     "Kilo editor -- version %s", KILO_VERSION);
             /* truncate the welcome message if it does not fit to screen */
             if (welcomelen > E.screencols) welcomelen = E.screencols;
+            /* center the welcome message */
+            int padding = (E.screencols - welcomelen) / 2;
+            if (padding) {
+                abAppend(ab, "~", 1);
+                padding--;
+            }
+            /* fill the space up to string with space characters */
+            while (padding--) abAppend(ab, " ", 1);
             abAppend(ab, welcome, welcomelen);
         } else {
             /* print tildes on each row of screen */
