@@ -27,6 +27,8 @@ enum editorKey {                                                         // {{{2
     ARROW_DOWN,
     ARROW_RIGHT,
     ARROW_LEFT,
+    HOME_KEY,
+    END_KEY,
     PAGE_UP,
     PAGE_DOWN
 };
@@ -143,10 +145,18 @@ int editorReadKey() {                                                   // {{{2
                 if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
                 if (seq[2] == '~') {
                     switch (seq[1]) {
+                        /* \x1b[1~ = Home */
+                        case '1': return HOME_KEY;
+                        /* \x1b[2~ = End */
+                        case '2': return END_KEY;
                         /* \x1b[5~ = PageUp */
                         case '5': return PAGE_UP;
                         /* \x1b[6~ = PageDown */
                         case '6': return PAGE_DOWN;
+                        /* \x1b[7~ = Home */
+                        case '7': return HOME_KEY;
+                        /* \x1b[8~ = End */
+                        case '8': return END_KEY;
                     }
                 }
             } else {
@@ -159,7 +169,18 @@ int editorReadKey() {                                                   // {{{2
                     case 'C': return ARROW_RIGHT;
                     /* \x1b[D = left arrow */
                     case 'D': return ARROW_LEFT;
+                    /* \x1b[H = Home */
+                    case 'H': return HOME_KEY;
+                    /* \x1b[F = End */
+                    case 'F': return END_KEY;
                 }
+            }
+        } else if (seq[0] == 'O') {
+            switch (seq[1]) {
+                /* \x1bOH = Home */
+                case 'H': return HOME_KEY;
+                /* \x1bOF = End */
+                case 'F': return END_KEY;
             }
         }
 
