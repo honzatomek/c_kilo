@@ -26,7 +26,9 @@ enum editorKey {                                                         // {{{2
     ARROW_UP = 1000,
     ARROW_DOWN,
     ARROW_RIGHT,
-    ARROW_LEFT
+    ARROW_LEFT,
+    PAGE_UP,
+    PAGE_DOWN
 };
 
 // data ------------------------------------------------------------------- {{{1
@@ -137,15 +139,27 @@ int editorReadKey() {                                                   // {{{2
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
 
         if (seq[0] == '[') {
-            switch (seq[1]) {
-                /* \x1b[A = up arrow */
-                case 'A': return ARROW_UP;
-                /* \x1b[B = down arrow */
-                case 'B': return ARROW_DOWN;
-                /* \x1b[C = right arrow */
-                case 'C': return ARROW_RIGHT;
-                /* \x1b[D = left arrow */
-                case 'D': return ARROW_LEFT;
+            if (seq[1] >= '0' && seq[1] <= '9') {
+                if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+                if (seq[2] == '~') {
+                    switch (seq[1]) {
+                        /* \x1b[5~ = PageUp */
+                        case '5': return PAGE_UP;
+                        /* \x1b[6~ = PageDown */
+                        case '6': return PAGE_DOWN;
+                    }
+                }
+            } else {
+                switch (seq[1]) {
+                    /* \x1b[A = up arrow */
+                    case 'A': return ARROW_UP;
+                    /* \x1b[B = down arrow */
+                    case 'B': return ARROW_DOWN;
+                    /* \x1b[C = right arrow */
+                    case 'C': return ARROW_RIGHT;
+                    /* \x1b[D = left arrow */
+                    case 'D': return ARROW_LEFT;
+                }
             }
         }
 
