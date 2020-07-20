@@ -398,6 +398,15 @@ void editorProcessKeypress() {                                           // {{{2
             break;
 
         /* check for movement keys */
+        case HOME_KEY:
+            /* set cursor to the beginning of line */
+            E.cx = 0;
+            break;
+        case END_KEY:
+            /* set cursor to the end of line */
+            E.cx = E.screencols - 1;
+            break;
+
         case PAGE_UP:
         case PAGE_DOWN:
             /* block of code in braces to declare the times variable
