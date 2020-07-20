@@ -20,12 +20,13 @@
  * also to switch case for characters it is possible to toggle bit 5 */
 #define CTRL_KEY(k) ((k) & 0x1f)
 
-/* crete key constants for further use */
-enum editorKey {
-    ARROW_UP = 'w',
-    ARROW_DOWN = 's',
-    ARROW_RIGHT = 'd',
-    ARROW_LEFT = 'a'
+/* crete key constants for further use
+ * use numbers out of normal character range - e.g. 1000+ */
+enum editorKey {                                                         // {{{2
+    ARROW_UP = 1000,
+    ARROW_DOWN,
+    ARROW_RIGHT,
+    ARROW_LEFT
 };
 
 // data ------------------------------------------------------------------- {{{1
@@ -110,7 +111,7 @@ void enableRawMode() {                                                   // {{{2
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
-char editorReadKey() {                                                   // {{{2
+int editorReadKey() {                                                   // {{{2
     /* wait for one keypress and return it
      * low level terminal interaction */
     int nread;
@@ -322,8 +323,8 @@ void editorRefreshScreen() {                                             // {{{2
 
 // input ------------------------------------------------------------------ {{{1
 
-void editorMoveCursor(char key) {                                        // {{{2
-    /* use wsad for movement */
+void editorMoveCursor(int key) {                                         // {{{2
+    /* use arrows for movement */
     switch (key) {
         case ARROW_UP:
             E.cy--;
@@ -342,7 +343,7 @@ void editorMoveCursor(char key) {                                        // {{{2
 
 void editorProcessKeypress() {                                           // {{{2
     /* wait for keypress and handle it */
-    char c = editorReadKey();
+    int c = editorReadKey();
 
     switch (c) {
         /* check whether pressed key = 'q' with bits 5-7 stripped off */
