@@ -375,7 +375,21 @@ void editorProcessKeypress() {                                           // {{{2
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
-        /* check for movement keys 'wsad' */
+
+        /* check for movement keys */
+        case PAGE_UP:
+        case PAGE_DOWN:
+            /* block of code in braces to declare the times variable
+             * the up and down arrow keys are simulated to move to the bottom
+             * or top of the screen
+             * this way of implementation is for further use with scrolling */
+            {
+                int times = E.screenrows;
+                while (times--)
+                    editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+            }
+            break;
+
         case ARROW_UP:
         case ARROW_DOWN:
         case ARROW_RIGHT:
