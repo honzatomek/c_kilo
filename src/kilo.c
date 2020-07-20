@@ -20,6 +20,14 @@
  * also to switch case for characters it is possible to toggle bit 5 */
 #define CTRL_KEY(k) ((k) & 0x1f)
 
+/* crete key constants for further use */
+enum editorKey {
+    ARROW_UP = 'w',
+    ARROW_DOWN = 's',
+    ARROW_RIGHT = 'd',
+    ARROW_LEFT = 'a'
+};
+
 // data ------------------------------------------------------------------- {{{1
 
 struct editorConfig {                                                    // {{{2
@@ -130,13 +138,13 @@ char editorReadKey() {                                                   // {{{2
         if (seq[0] == '[') {
             switch (seq[1]) {
                 /* \x1b[A = up arrow */
-                case 'A': return 'w';
+                case 'A': return ARROW_UP;
                 /* \x1b[B = down arrow */
-                case 'B': return 's';
+                case 'B': return ARROW_DOWN;
                 /* \x1b[C = right arrow */
-                case 'C': return 'd';
+                case 'C': return ARROW_RIGHT;
                 /* \x1b[D = left arrow */
-                case 'D': return 'a';
+                case 'D': return ARROW_LEFT;
             }
         }
 
@@ -317,17 +325,17 @@ void editorRefreshScreen() {                                             // {{{2
 void editorMoveCursor(char key) {                                        // {{{2
     /* use wsad for movement */
     switch (key) {
-        case 'a':
-            E.cx--;
-            break;
-        case 'd':
-            E.cx++;
-            break;
-        case 'w':
+        case ARROW_UP:
             E.cy--;
             break;
-        case 's':
+        case ARROW_DOWN:
             E.cy++;
+            break;
+        case ARROW_RIGHT:
+            E.cx++;
+            break;
+        case ARROW_LEFT:
+            E.cx--;
             break;
     }
 }
@@ -345,10 +353,10 @@ void editorProcessKeypress() {                                           // {{{2
             exit(0);
             break;
         /* check for movement keys 'wsad' */
-        case 'w':
-        case 's':
-        case 'a':
-        case 'd':
+        case ARROW_UP:
+        case ARROW_DOWN:
+        case ARROW_RIGHT:
+        case ARROW_LEFT:
             editorMoveCursor(c);
             break;
     }
