@@ -27,6 +27,7 @@ enum editorKey {                                                         // {{{2
     ARROW_DOWN,
     ARROW_RIGHT,
     ARROW_LEFT,
+    DEL_KEY,
     HOME_KEY,
     END_KEY,
     PAGE_UP,
@@ -149,6 +150,8 @@ int editorReadKey() {                                                   // {{{2
                         case '1': return HOME_KEY;
                         /* \x1b[2~ = End */
                         case '2': return END_KEY;
+                        /* \x1b[3~ = Del */
+                        case '3': return DEL_KEY;
                         /* \x1b[5~ = PageUp */
                         case '5': return PAGE_UP;
                         /* \x1b[6~ = PageDown */
