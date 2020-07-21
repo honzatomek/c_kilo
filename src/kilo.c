@@ -36,6 +36,14 @@ enum editorKey {                                                         // {{{2
 
 // data ------------------------------------------------------------------- {{{1
 
+/* editor row - line of text as a pointer to a dynamically allocated character
+ * dara and a length
+ * the typedef lets us refer to the type as `erow` insted of `struct erow` */
+typedef struct erow {                                                    // {{{2
+    int size;
+    char *chars;
+} erow;
+
 struct editorConfig {                                                    // {{{2
     /* store the cursor position, cx = horizontal (left to right, zero based),
      * cy = vertical (top to bottom, zero based)*/
@@ -44,6 +52,10 @@ struct editorConfig {                                                    // {{{2
      * e.g. width and height of terminal */
     int screenrows;
     int screencols;
+    /* for now the editor can only display one line of text
+     * -> numrows = {0 / 1} */
+    int numrows;
+    erow row;
     struct termios orig_termios;
 };
 
@@ -438,6 +450,8 @@ void initEditor() {                                                      // {{{2
     /* initialise the cursor position to the top left of screen */
     E.cx = 0;
     E.cy = 0;
+    /* initialise number of rows as 0 */
+    E.numrows = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
