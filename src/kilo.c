@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -262,6 +263,25 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
     }
 }
 
+// file i/o --------------------------------------------------------------- {{{1
+
+void editorOpen() {                                                      // {{{2
+    /* hard code Hello world! into line as test string */
+    char *line = "Hello, world!";
+    /* from <sys/types.h> */
+    ssize_t linelen = 13;
+
+    /* set size field to the length of the row */
+    E.row.size = linelen;
+    /* from <stdlib.h>
+     * allocate enough memory for the row */
+    E.row.chars = malloc(linelen + 1);
+    memcpy(E.row.chars, line, linelen);
+    E.row.chars[linelen] = '\0';
+    /* set numrows = 1 to indicate that erow contains line to be displayed */
+    E.numrows = 1;
+}
+
 // append buffer ---------------------------------------------------------- {{{1
 
 /* struct for append buffer to print whole screen at once */
@@ -461,6 +481,8 @@ int main() {                                                             // {{{2
     enableRawMode();
     /* initialize all the fields inf the E struct */
     initEditor();
+    /* editorOpen() will be for opening and reading a file from disk */
+    editorOpen();
 
     while (1) {
         editorRefreshScreen();
