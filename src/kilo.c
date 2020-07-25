@@ -321,26 +321,36 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
     /* write tildes at the beginning of each line */
     int y;
     for (y = 0; y < E.screenrows; y++) {
-        if (y == E.screenrows / 3) {
-            char welcome[80];
-            /* snpfintf() form <stdio.h>, used to interpolate kilo version
-             * into the welcome message */
-            int welcomelen = snprintf(welcome, sizeof(welcome),
-                    "Kilo editor -- version %s", KILO_VERSION);
-            /* truncate the welcome message if it does not fit to screen */
-            if (welcomelen > E.screencols) welcomelen = E.screencols;
-            /* center the welcome message */
-            int padding = (E.screencols - welcomelen) / 2;
-            if (padding) {
-                abAppend(ab, "~", 1);
-                padding--;
+        /* check wheter we are drawing row that is part of the text buffer
+         * or a row that comes after */
+        if (y >= E.numrows) {
+            if (y == E.screenrows / 3) {
+                char welcome[80];
+                /* snpfintf() form <stdio.h>, used to interpolate kilo version
+                 * into the welcome message */
+                int welcomelen = snprintf(welcome, sizeof(welcome),
+                        "Kilo editor -- version %s", KILO_VERSION);
+                /* truncate the welcome message if it does not fit to screen */
+                if (welcomelen > E.screencols) welcomelen = E.screencols;
+                /* center the welcome message */
+                int padding = (E.screencols - welcomelen) / 2;
+                if (padding) {
+                    abAppend(ab, "~", 1);
+                    padding--;
+                }
+                /* fill the space up to string with space characters */
+                while (padding--) abAppend(ab, " ", 1);
+                abAppend(ab, welcome, welcomelen);
+            } else {
+                /* print tildes on each row of screen */
+               abAppend(ab, "~", 1);
             }
-            /* fill the space up to string with space characters */
-            while (padding--) abAppend(ab, " ", 1);
-            abAppend(ab, welcome, welcomelen);
         } else {
-            /* print tildes on each row of screen */
-           abAppend(ab, "~", 1);
+            int len = E.row.size;
+            /* truncate the rendered line if it goes beyond the screen */
+            if (len > E.screencols) len = E.screencols;
+            /* simply write out the chars fiels of the erow */
+            abAppend(ab, E.row.chars, len);
         }
 
         /* clear line before repainting
