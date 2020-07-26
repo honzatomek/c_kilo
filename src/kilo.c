@@ -1,5 +1,12 @@
 // includes --------------------------------------------------------------- {{{1
 
+/* define feature test macros (getline() function complied on compilation)
+ * also for better portability
+ * the header files use these macros to decide what features to expose */
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
