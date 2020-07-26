@@ -265,21 +265,45 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
 
 // file i/o --------------------------------------------------------------- {{{1
 
-void editorOpen() {                                                      // {{{2
-    /* hard code Hello world! into line as test string */
-    char *line = "Hello, world!";
-    /* from <sys/types.h> */
-    ssize_t linelen = 13;
+void editorOpen(char *filename) {                                        // {{{2
+    /* FILE, fopen() and getline() come from <stdio.h>
+     * editorOpen() takes filename as an argument and uses fopen() to open
+     * the file for reading */
+    FILE *fp = fopen(filename, "r");
+    if (!fp) die("fopen");
 
-    /* set size field to the length of the row */
-    E.row.size = linelen;
-    /* from <stdlib.h>
-     * allocate enough memory for the row */
-    E.row.chars = malloc(linelen + 1);
-    memcpy(E.row.chars, line, linelen);
-    E.row.chars[linelen] = '\0';
-    /* set numrows = 1 to indicate that erow contains line to be displayed */
-    E.numrows = 1;
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+    /* get line and linelen from getlin() instead of hardcoded values
+     * getline() is useful for reading lines from a file if we do not know
+     * how much memory to allocate for it
+     * first we pass it a null _line_ pointer and a _linecap_ (line capacity)
+     * of 0. getline() reads a line into memory and sets _line_ to point to
+     * the memory, also sets _linecap_ to know how much memory was allocated.
+     * its return value is the length of the line read or -1 if at the EOF.
+     * later we'll feed _line_ and _linecap_ back into getline() and it will
+     * try to reuse the memory already allocated as long the _linecap_ is
+     * big enough */
+    linelen = getline(&line, &linecap, fp);
+    if (linelen != -1) {
+        /* strip newline and carriage return chars from the end of the line */
+        while (linelen > 0 && (line[linelen - 1] == '\n' ||
+                               line[linelen - 1] == '\r'))
+            linelen--;
+
+        /* set size field to the length of the row */
+        E.row.size = linelen;
+        /* from <stdlib.h>
+         * allocate enough memory for the row */
+        E.row.chars = malloc(linelen + 1);
+        memcpy(E.row.chars, line, linelen);
+        E.row.chars[linelen] = '\0';
+        /* set numrows = 1 to indicate that erow contains line to be displayed */
+        E.numrows = 1;
+    }
+    free(line);
+    fclose(fp);
 }
 
 // append buffer ---------------------------------------------------------- {{{1
@@ -486,13 +510,17 @@ void initEditor() {                                                      // {{{2
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
-int main() {                                                             // {{{2
+int main(int argc, char *argv[]) {                                       // {{{2
     /* simplified the main() function */
     enableRawMode();
     /* initialize all the fields inf the E struct */
     initEditor();
-    /* editorOpen() will be for opening and reading a file from disk */
-    editorOpen();
+    /* editorOpen() will be for opening and reading a file from disk
+     * if filename is supplied to kilo then open it, otherwise continue with
+     * empty file */
+    if (argc >= 2) {
+        editorOpen(argv[1]);
+    }
 
     while (1) {
         editorRefreshScreen();
