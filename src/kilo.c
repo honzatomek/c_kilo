@@ -355,7 +355,8 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
         /* check wheter we are drawing row that is part of the text buffer
          * or a row that comes after */
         if (y >= E.numrows) {
-            if (y == E.screenrows / 3) {
+            /* display the welcome message only if no file was supplied */
+            if (E.numrows == 0 && y == E.screenrows / 3) {
                 char welcome[80];
                 /* snpfintf() form <stdio.h>, used to interpolate kilo version
                  * into the welcome message */
