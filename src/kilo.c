@@ -367,9 +367,11 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
     /* write tildes at the beginning of each line */
     int y;
     for (y = 0; y < E.screenrows; y++) {
-        /* check wheter we are drawing row that is part of the text buffer
+        /* actual file row */
+        int filerow = y + E.rowoff;
+        /* check wheter we are drawing a row that is part of the text buffer
          * or a row that comes after */
-        if (y >= E.numrows) {
+        if (filerow >= E.numrows) {
             /* display the welcome message only if no file was supplied */
             if (E.numrows == 0 && y == E.screenrows / 3) {
                 char welcome[80];
@@ -393,11 +395,11 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
                abAppend(ab, "~", 1);
             }
         } else {
-            int len = E.row[y].size;
+            int len = E.row[filerow].size;
             /* truncate the rendered line if it goes beyond the screen */
             if (len > E.screencols) len = E.screencols;
             /* simply write out the chars fields of the erow */
-            abAppend(ab, E.row[y].chars, len);
+            abAppend(ab, E.row[filerow].chars, len);
         }
 
         /* clear line before repainting
