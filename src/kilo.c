@@ -390,11 +390,11 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
                abAppend(ab, "~", 1);
             }
         } else {
-            int len = E.row.size;
+            int len = E.row[y].size;
             /* truncate the rendered line if it goes beyond the screen */
             if (len > E.screencols) len = E.screencols;
-            /* simply write out the chars fiels of the erow */
-            abAppend(ab, E.row.chars, len);
+            /* simply write out the chars fields of the erow */
+            abAppend(ab, E.row[y].chars, len);
         }
 
         /* clear line before repainting
