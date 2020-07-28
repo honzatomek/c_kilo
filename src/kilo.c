@@ -63,7 +63,9 @@ struct editorConfig {                                                    // {{{2
     /* for now the editor can only display one line of text
      * -> numrows = {0 / 1} */
     int numrows;
-    erow row;
+    /* make row a dynamically allocated array of erow structs -> make _row_
+     * a pointer */
+    erow *row;
     struct termios orig_termios;
 };
 
@@ -514,6 +516,8 @@ void initEditor() {                                                      // {{{2
     E.cy = 0;
     /* initialise number of rows as 0 */
     E.numrows = 0;
+    /* initialize E.row pointer to be NULL */
+    E.row = NULL;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
