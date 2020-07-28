@@ -313,8 +313,9 @@ void editorOpen(char *filename) {                                        // {{{2
      * later we'll feed _line_ and _linecap_ back into getline() and it will
      * try to reuse the memory already allocated as long the _linecap_ is
      * big enough */
-    linelen = getline(&line, &linecap, fp);
-    if (linelen != -1) {
+    /* while loop to read the whole file, the while loop works because
+     * getline() returns -1 at EOF */
+    while ((linelen = getline(&line, &linecap, fp)) != -1) {
         /* strip newline and carriage return chars from the end of the line */
         while (linelen > 0 && (line[linelen - 1] == '\n' ||
                                line[linelen - 1] == '\r'))
