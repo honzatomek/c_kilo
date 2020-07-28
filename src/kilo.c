@@ -274,16 +274,21 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
 
 // row operations --------------------------------------------------------- {{{1
 
-editorAppendRow(char *s, size_t len) {                                   // {{{2
+void editorAppendRow(char *s, size_t len) {                              // {{{2
+    /* have to tell realloc() how many bytes to allocate */
+    E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
+
+    /* set _at_ to th index of the new row */
+    int at = E.numrows;
     /* set size field to the length of the row */
-    E.row.size = len;
+    E.row[at].size = len;
     /* from <stdlib.h>
      * allocate enough memory for the row */
-    E.row.chars = malloc(len + 1);
-    memcpy(E.row.chars, s, len);
-    E.row.chars[len] = '\0';
-    /* set numrows = 1 to indicate that erow contains line to be displayed */
-    E.numrows = 1;
+    E.row[at].chars = malloc(len + 1);
+    memcpy(E.row[at].chars, s, len);
+    E.row[at].chars[len] = '\0';
+    /* set numrows + 1 */
+    E.numrows++;
 }
 
 // file i/o --------------------------------------------------------------- {{{1
