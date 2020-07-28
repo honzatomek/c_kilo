@@ -56,6 +56,8 @@ struct editorConfig {                                                    // {{{2
     /* store the cursor position, cx = horizontal (left to right, zero based),
      * cy = vertical (top to bottom, zero based)*/
     int cx, cy;
+    /* row offset for scrolling */
+    int rowoff;
     /* set up global struct to contain the editor state
      * e.g. width and height of terminal */
     int screenrows;
@@ -525,6 +527,8 @@ void initEditor() {                                                      // {{{2
     /* initialise the cursor position to the top left of screen */
     E.cx = 0;
     E.cy = 0;
+    /* initialise row offset to 0 - scrolled to the top as default */
+    E.rowoff = 0;
     /* initialise number of rows as 0 */
     E.numrows = 0;
     /* initialize E.row pointer to be NULL */
