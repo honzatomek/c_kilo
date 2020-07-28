@@ -138,7 +138,7 @@ void enableRawMode() {                                                   // {{{2
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
-int editorReadKey() {                                                   // {{{2
+int editorReadKey() {                                                    // {{{2
     /* wait for one keypress and return it
      * low level terminal interaction */
     int nread;
@@ -272,6 +272,20 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
     }
 }
 
+// row operations --------------------------------------------------------- {{{1
+
+editorAppendRow(char *s, size_t len) {                                   // {{{2
+    /* set size field to the length of the row */
+    E.row.size = len;
+    /* from <stdlib.h>
+     * allocate enough memory for the row */
+    E.row.chars = malloc(len + 1);
+    memcpy(E.row.chars, s, len);
+    E.row.chars[len] = '\0';
+    /* set numrows = 1 to indicate that erow contains line to be displayed */
+    E.numrows = 1;
+}
+
 // file i/o --------------------------------------------------------------- {{{1
 
 void editorOpen(char *filename) {                                        // {{{2
@@ -284,7 +298,7 @@ void editorOpen(char *filename) {                                        // {{{2
     char *line = NULL;
     size_t linecap = 0;
     ssize_t linelen;
-    /* get line and linelen from getlin() instead of hardcoded values
+    /* get line and linelen from getline() instead of hardcoded values
      * getline() is useful for reading lines from a file if we do not know
      * how much memory to allocate for it
      * first we pass it a null _line_ pointer and a _linecap_ (line capacity)
@@ -300,16 +314,7 @@ void editorOpen(char *filename) {                                        // {{{2
         while (linelen > 0 && (line[linelen - 1] == '\n' ||
                                line[linelen - 1] == '\r'))
             linelen--;
-
-        /* set size field to the length of the row */
-        E.row.size = linelen;
-        /* from <stdlib.h>
-         * allocate enough memory for the row */
-        E.row.chars = malloc(linelen + 1);
-        memcpy(E.row.chars, line, linelen);
-        E.row.chars[linelen] = '\0';
-        /* set numrows = 1 to indicate that erow contains line to be displayed */
-        E.numrows = 1;
+        editorAppendRow(line, linelen);
     }
     free(line);
     fclose(fp);
