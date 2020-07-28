@@ -363,6 +363,18 @@ void abFree(struct abuf *ab) {                                           // {{{2
 
 // output ----------------------------------------------------------------- {{{1
 
+void editorScroll() {                                                    // {{{2
+    /* if the cursor is above the visible window scroll to the cursor
+     * position */
+    if (E.cy < E.rowoff) {
+        E.rowoff = E.cy;
+    }
+    /* if the cursor is below visible window, scroll accordingly */
+    if (E.cy >= E.rowoff + E.screenrows) {
+        E.rowoff = E.cy - E.screenrows + 1;
+    }
+}
+
 void editorDrawRows(struct abuf *ab) {                                   // {{{2
     /* write tildes at the beginning of each line */
     int y;
@@ -415,6 +427,9 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
 }
 
 void editorRefreshScreen() {                                             // {{{2
+    /* call scrolling function before each refresh */
+    editorScroll();
+
     /* initialise buffer ab */
     struct abuf ab = ABUF_INIT;
     /* escape sequence to hide the cursor */
