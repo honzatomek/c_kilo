@@ -476,7 +476,8 @@ void editorMoveCursor(int key) {                                         // {{{2
             }
             break;
         case ARROW_DOWN:
-            if (E.cy != E.screenrows - 1) {
+            /* allow cursor to advance past the bottom of the screen */
+            if (E.cy < E.numrows) {
                 E.cy++;
             }
             break;
