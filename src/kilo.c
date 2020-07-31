@@ -486,6 +486,10 @@ void editorRefreshScreen() {                                             // {{{2
 // input ------------------------------------------------------------------ {{{1
 
 void editorMoveCursor(int key) {                                         // {{{2
+    /* check if the cursor is on the actual line. if so, the row will point
+     * to the erow the cursor is on */
+    erow *row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
+
     /* use arrows for movement */
     switch (key) {
         case ARROW_UP:
@@ -501,7 +505,10 @@ void editorMoveCursor(int key) {                                         // {{{2
             break;
         case ARROW_RIGHT:
             /* allow user to scroll past the right edge of the screen */
-            E.cx++;
+            /* while limiting the movement to the length of the line + 1 */
+            if (row && E.cx < row->size) {
+                E.cx++;
+            }
             break;
         case ARROW_LEFT:
             if (E.cx != 0) {
