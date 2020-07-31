@@ -375,6 +375,15 @@ void editorScroll() {                                                    // {{{2
     if (E.cy >= E.rowoff + E.screenrows) {
         E.rowoff = E.cy - E.screenrows + 1;
     }
+    /* if the cursor is left of the visible window scroll to the cursor
+     * position */
+    if (E.cx < E.coloff) {
+        E.coloff = E.cx;
+    }
+    /* if the cursor is right of the visible window, scroll accordingly */
+    if (E.cx >= E.coloff + E.screencols) {
+        E.coloff = E.cx - E.screencols + 1;
+    }
 }
 
 void editorDrawRows(struct abuf *ab) {                                   // {{{2
