@@ -45,11 +45,17 @@ enum editorKey {                                                         // {{{2
 // data ------------------------------------------------------------------- {{{1
 
 /* editor row - line of text as a pointer to a dynamically allocated character
- * dara and a length
+ * data and a length
  * the typedef lets us refer to the type as `erow` insted of `struct erow` */
 typedef struct erow {                                                    // {{{2
+    /* size of chars */
     int size;
+    /* size of render */
+    int rsize;
+    /* actual line characters */
     char *chars;
+    /* rendered line characters */
+    char *render;
 } erow;
 
 struct editorConfig {                                                    // {{{2
@@ -291,6 +297,11 @@ void editorAppendRow(char *s, size_t len) {                              // {{{2
     E.row[at].chars = malloc(len + 1);
     memcpy(E.row[at].chars, s, len);
     E.row[at].chars[len] = '\0';
+
+    /* initialize render array */
+    E.row[at].rsize = 0;
+    E.row[at].render = NULL;
+
     /* set numrows + 1 */
     E.numrows++;
 }
