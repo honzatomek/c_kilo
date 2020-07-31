@@ -467,8 +467,10 @@ void editorRefreshScreen() {                                             // {{{2
     /* position the cursor */
     char buf[32];
     /* use snprintf() to inject cursor position into string in buf variable */
-    /* subtract __rowoff__ from __cy__ to get correct behavior whe scrollup */
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, E.cx + 1);
+    /* subtract __rowoff__ from __cy__ to get correct behavior when scrollup */
+    /* subtract __coloff__ from __cx__ to get correct behavior when scrolling */
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1,
+                                              (E.cx - E.coloff) + 1);
     /* strlen() is form <string.h> */
     abAppend(&ab, buf, strlen(buf));
 
