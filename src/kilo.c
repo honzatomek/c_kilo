@@ -508,6 +508,10 @@ void editorMoveCursor(int key) {                                         // {{{2
             /* while limiting the movement to the length of the line + 1 */
             if (row && E.cx < row->size) {
                 E.cx++;
+            /* left arrow at the end of line goes to the start of next line */
+            } else if (row && E.cx == row->size) {
+                E.cy++;
+                E.cx = 0;
             }
             break;
         case ARROW_LEFT:
