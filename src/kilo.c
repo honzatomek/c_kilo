@@ -448,7 +448,7 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
                abAppend(ab, "~", 1);
             }
         } else {
-            int len = E.row[filerow].size - E.coloff;
+            int len = E.row[filerow].rsize - E.coloff;
             /* in case the user scrolled horzontally past the end of line
              * in that case set len to 0 so that nothing is displayed */
             if (len < 0) len = 0;
@@ -456,7 +456,7 @@ void editorDrawRows(struct abuf *ab) {                                   // {{{2
             if (len > E.screencols) len = E.screencols;
             /* simply write out the chars fields of the erow */
             /* use E.coloff as an index to the character display */
-            abAppend(ab, &E.row[filerow].chars[E.coloff], len);
+            abAppend(ab, &E.row[filerow].render[E.coloff], len);
         }
 
         /* clear line before repainting
