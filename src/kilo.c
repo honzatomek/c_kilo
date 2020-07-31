@@ -285,16 +285,29 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
 // row operations --------------------------------------------------------- {{{1
 
 void editorUpdateRow(erow *row) {                                        // {{{2
+    /* rendering tab characters as 8 spaces */
+    int tabs = 0;
+    int j;
+    /* count the number of chars in line */
+    for (j = 0; j < row->size; j++)
+        if (row->chars[j] == '\t') tabs++;
+
     /* free memory allocated for render array */
     free(row->render);
-    /* allocate memory for the line */
-    row->render = malloc(row->size + 1);
+    /* allocate memory for the line, tabs are 8 spaces (1 for character and add 7 */
+    row->render = malloc(row->size + tabs * 7 + 1);
 
-    int j;
     int idx;
     /* for now just copy the contents of actual line to render array */
     for (j = 0; j < row->size; j++) {
-        row->render[idx++] = row->chars[j];
+        /* render tabs */
+        if (row->chars[j] == '\t') {
+            row->render[idx++] = ' ';
+            /* pad with spaces until tabstop = column number divisible by 8 */
+            while (idx % 8 != 0) row->render[idx++] = ' ';
+        } else {
+            row->render[idx++] = row->chars[j];
+        }
     }
     /* end the array with nullchar */
     row->render[idx] = '\0';
