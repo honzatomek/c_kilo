@@ -284,6 +284,24 @@ int getWindowSize(int *rows, int *cols) {                                // {{{2
 
 // row operations --------------------------------------------------------- {{{1
 
+void editorUpdateRow(erow *row) {                                        // {{{2
+    /* free memory allocated for render array */
+    free(row->render);
+    /* allocate memory for the line */
+    row->render = malloc(row->size + 1);
+
+    int j;
+    int idx;
+    /* for now just copy the contents of actual line to render array */
+    for (j = 0; j < row->size; j++) {
+        row->render[idx++] = row->chars[j];
+    }
+    /* end the array with nullchar */
+    row->render[idx] = '\0';
+    /* render size = number of characters */
+    row->rsize = idx;
+}
+
 void editorAppendRow(char *s, size_t len) {                              // {{{2
     /* have to tell realloc() how many bytes to allocate */
     E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
@@ -301,6 +319,7 @@ void editorAppendRow(char *s, size_t len) {                              // {{{2
     /* initialize render array */
     E.row[at].rsize = 0;
     E.row[at].render = NULL;
+    editorUpdateRow(&E.row[at]);
 
     /* set numrows + 1 */
     E.numrows++;
