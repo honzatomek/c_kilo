@@ -20,6 +20,8 @@
 // defines ---------------------------------------------------------------- {{{1
 
 #define KILO_VERSION "0.0.1"
+/* set tab stop as a constant */
+#define KILO_TAB_STOP 8
 
 /* CTRL_KEY macro does a bitwise AND of character with the value 00011111 in
  * binary = sets the upper 3 bits of character to 0 (Ctrl key strips bits 5 and 6
@@ -295,7 +297,7 @@ void editorUpdateRow(erow *row) {                                        // {{{2
     /* free memory allocated for render array */
     free(row->render);
     /* allocate memory for the line, tabs are 8 spaces (1 for character and add 7 */
-    row->render = malloc(row->size + tabs * 7 + 1);
+    row->render = malloc(row->size + tabs * (KILO_TAB_STOP - 1) + 1);
 
     int idx;
     /* for now just copy the contents of actual line to render array */
@@ -304,7 +306,7 @@ void editorUpdateRow(erow *row) {                                        // {{{2
         if (row->chars[j] == '\t') {
             row->render[idx++] = ' ';
             /* pad with spaces until tabstop = column number divisible by 8 */
-            while (idx % 8 != 0) row->render[idx++] = ' ';
+            while (idx % KILO_TAB_STOP != 0) row->render[idx++] = ' ';
         } else {
             row->render[idx++] = row->chars[j];
         }
