@@ -516,6 +516,17 @@ void editorMoveCursor(int key) {                                         // {{{2
             }
             break;
     }
+
+    /* fix vertical movement - snap to the length of line
+     * set row again as E.cy will be pointing to a different line */
+    row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
+    /* get length of row the cursor is on, consider NULL line to be of 0 length */
+    int rowlen = row ? row->size : 0;
+    /* if the cursor is to the right of the line end, set it to the end
+     * of the current line */
+    if (E.cx > rowlen) {
+        E.cx = rowlen;
+    }
 }
 
 void editorProcessKeypress() {                                           // {{{2
