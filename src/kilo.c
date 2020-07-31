@@ -513,6 +513,12 @@ void editorMoveCursor(int key) {                                         // {{{2
         case ARROW_LEFT:
             if (E.cx != 0) {
                 E.cx--;
+            /* allow user to move to the end of line above if at the beginning
+             * of a line
+             * make sure we are not at the first line */
+            } else if (E.cy > 0) {
+                E.cy--;
+                E.cx = E.row[E.cy].size;
             }
             break;
     }
